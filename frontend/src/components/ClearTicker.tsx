@@ -8,7 +8,7 @@ import { Award, Zap } from "lucide-react";
 
 interface ClearItem {
   id: string;
-  word: string;
+  gameId: string;
   attempts: number;
   timestamp: Date;
 }
@@ -36,7 +36,7 @@ export default function ClearTicker() {
             const data = doc.data();
             loadedClears.push({
               id: doc.id,
-              word: data.word || "비밀단어",
+              gameId: data.gameId || "",
               attempts: data.attempts || 0,
               timestamp: data.timestamp?.toDate() || new Date(),
             });
@@ -103,7 +103,7 @@ export default function ClearTicker() {
                 <div className="flex items-center gap-2">
                   <Zap className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                   <span className="font-semibold text-slate-300">
-                    누군가 <span className="text-indigo-400 font-bold">'{clear.word}'</span>을(를) 맞췄습니다!
+                    누군가 <span className="text-indigo-400 font-bold">정답</span>을 맞췄습니다!
                   </span>
                 </div>
                 

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, doc, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, onSnapshot, query, where } from "firebase/firestore";
 
 import TutorialModal from "@/components/TutorialModal";
 import Toast from "@/components/Toast";
@@ -40,6 +40,10 @@ export default function GamePage() {
   const [history, setHistory] = useState<GuessHistoryItem[]>([]);
   const [currentGuess, setCurrentGuess] = useState<GuessHistoryItem | null>(null);
   
+  // 세션 최고 점수 상태
+  const [localBestScore, setLocalBestScore] = useState(0);
+  const [globalBestScore, setGlobalBestScore] = useState(0);
+
   // UI 및 오버레이 상태
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,7 +66,9 @@ export default function GamePage() {
       setIsTutorialOpen(true);
     }
 
-    // 2. 백엔드에서 현재 글로벌 게임 ID를 가져옴
+
+
+    // 3. 백엔드에서 현재 글로벌 게임 ID를 가져옴
     const fetchGameInfo = async () => {
       try {
         const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -90,6 +96,8 @@ export default function GamePage() {
   // gameId가 변경될 때 로컬 기록 정합성 체크 및 자동 초기화
   useEffect(() => {
     if (!gameId) return;
+
+    let unsubscribeGuesses = () => {};
 
     const savedGameId = localStorage.getItem("guessword_game_id");
     const savedHistory = localStorage.getItem("guessword_history");
@@ -119,12 +127,17 @@ export default function GamePage() {
           setTargetWord("");
           setIsGameWon(false);
         }
+
+        // 로컬 최고 점수 로드
+        const savedBest = localStorage.getItem(`guessword_best_score_${gameId}`);
+        setLocalBestScore(savedBest ? Number(savedBest) : 0);
       } catch (e) {
         console.error("localStorage에서 기록을 파싱하는 데 실패했습니다.", e);
         setHistory([]);
         setCurrentGuess(null);
         setTargetWord("");
         setIsGameWon(false);
+        setLocalBestScore(0);
       }
     } else {
       // 게임 ID가 변경되었거나 기록이 없으면 이전 시도 내역 초기화
@@ -132,10 +145,41 @@ export default function GamePage() {
       setCurrentGuess(null);
       setTargetWord("");
       setIsGameWon(false);
+      setLocalBestScore(0);
       localStorage.setItem("guessword_game_id", gameId);
       localStorage.setItem("guessword_history", JSON.stringify([]));
       localStorage.removeItem("guessword_target_word");
+      if (savedGameId) {
+        localStorage.removeItem(`guessword_best_score_${savedGameId}`);
+      }
     }
+
+    // Firestore에서 실시간으로 해당 게임의 최고 점수 구독
+    try {
+      const q = query(
+        collection(db, "closest_guesses"),
+        where("gameId", "==", gameId)
+      );
+
+      unsubscribeGuesses = onSnapshot(q, (snapshot) => {
+        let maxScore = 0;
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.score > maxScore) {
+            maxScore = data.score;
+          }
+        });
+        setGlobalBestScore(maxScore);
+      }, (err) => {
+        console.error("실시간 최고 점수 로드 실패:", err);
+      });
+    } catch (e) {
+      console.error("실시간 최고 점수 구독 중 오류:", e);
+    }
+
+    return () => {
+      unsubscribeGuesses();
+    };
   }, [gameId]);
 
 
@@ -172,11 +216,24 @@ export default function GamePage() {
     }
   };
 
-  const logClearToFirestore = async (word: string, totalAttempts: number) => {
+  const logClosestGuessToFirestore = async (currentGameId: string, currentScore: number) => {
     try {
-      // clears 컬렉션에 데이터 저장 [시도 횟수, 단어, 타임스탬프]
+      await addDoc(collection(db, "closest_guesses"), {
+        gameId: currentGameId,
+        score: currentScore,
+        timestamp: serverTimestamp(),
+      });
+      console.log("Firestore closest_guesses에 성공적으로 근접 추측을 기록했습니다.");
+    } catch (err) {
+      console.warn("Firestore에 근접 추측을 기록할 수 없습니다:", err);
+    }
+  };
+
+  const logClearToFirestore = async (currentGameId: string, totalAttempts: number) => {
+    try {
+      // clears 컬렉션에 데이터 저장 [시도 횟수, 게임 ID, 타임스탬프]
       await addDoc(collection(db, "clears"), {
-        word: word,
+        gameId: currentGameId,
         attempts: totalAttempts,
         timestamp: serverTimestamp(),
       });
@@ -270,7 +327,14 @@ export default function GamePage() {
         setTargetWord(data.target_word);
         localStorage.setItem("guessword_target_word", data.target_word);
         // Firebase Firestore clears 컬렉션에 시도 횟수 메타데이터를 동기적으로 작성
-        await logClearToFirestore(data.target_word, updatedHistory.length);
+        await logClearToFirestore(data.game_id, updatedHistory.length);
+      } else {
+        const score = data.score;
+        if (score >= 10 && score > localBestScore) {
+          setLocalBestScore(score);
+          localStorage.setItem(`guessword_best_score_${gameId}`, score.toString());
+          await logClosestGuessToFirestore(data.game_id, score);
+        }
       }
     } catch (err) {
       triggerToast("서버 통신 에러가 발생했습니다. 백엔드가 켜져 있는지 확인하세요.");
@@ -285,7 +349,9 @@ export default function GamePage() {
       setHistory([]);
       setCurrentGuess(null);
       setIsGameWon(false);
+      setLocalBestScore(0);
       localStorage.setItem("guessword_history", JSON.stringify([]));
+      localStorage.removeItem(`guessword_best_score_${gameId}`);
     }
   };
 
@@ -338,6 +404,16 @@ export default function GamePage() {
 
         {/* Header Controls */}
         <div className="flex items-center gap-2">
+          {globalBestScore > 0 && (
+            <div 
+              className="flex items-center gap-1 px-2.5 py-2 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-[11px] font-bold text-rose-300 shadow-inner"
+              title="전체 최고 근접 점수"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse shrink-0"></span>
+              <span>최고 근접: {globalBestScore}점</span>
+            </div>
+          )}
+
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-slate-200 cursor-pointer transition shadow-md active:scale-95"
@@ -451,7 +527,7 @@ export default function GamePage() {
                       <span className="text-lg font-bold ml-0.5 text-slate-400">/ 100</span>
                     </div>
                     
-                    <div className="mt-1">
+                    <div className="mt-1 flex flex-col items-center gap-3.5">
                       {currentGuess.score >= 90 ? (
                         <span className="px-3 py-1 rounded-full text-[9px] font-extrabold bg-red-950/40 border border-red-500/30 text-red-400 uppercase tracking-wider animate-pulse">
                           정답 바로 코앞! (극도로 유사)
@@ -473,6 +549,18 @@ export default function GamePage() {
                           차가움 (연관 없음)
                         </span>
                       )}
+                      
+                      <div className="flex items-center gap-3 text-[10px] text-slate-400 font-semibold bg-white/5 px-3 py-1.5 rounded-2xl border border-white/5">
+                        <div className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                          <span>내 최고 점수: <strong className="text-indigo-300 font-bold">{localBestScore}점</strong></span>
+                        </div>
+                        <div className="w-[1px] h-3 bg-white/10" />
+                        <div className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+                          <span>전체 최고 점수: <strong className="text-rose-300 font-bold">{globalBestScore}점</strong></span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -480,9 +568,15 @@ export default function GamePage() {
                 <div className="py-6 flex flex-col items-center">
                   <Sparkles className="w-8 h-8 text-indigo-400/50 mb-3 animate-pulse" />
                   <h3 className="text-slate-300 font-extrabold text-sm md:text-base">정답 단어를 유추해 보세요!</h3>
-                  <p className="text-xs text-slate-500 mt-1.5 max-w-[280px] leading-relaxed">
+                  <p className="text-xs text-slate-500 mt-1.5 max-w-[280px] leading-relaxed mb-4">
                     하단 입력창에 어울리는 한국어 단어를 입력하고 유사도를 체크해 보세요.
                   </p>
+                  {globalBestScore > 0 && (
+                    <div className="flex items-center gap-1 text-[10px] text-slate-400 font-semibold bg-rose-500/5 px-3 py-1.5 rounded-2xl border border-rose-500/10 text-rose-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse shrink-0"></span>
+                      <span>현재 전체 최고 근접: <strong className="font-bold">{globalBestScore}점</strong></span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

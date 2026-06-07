@@ -47,10 +47,23 @@ service cloud.firestore {
     
     // Domain Validator for game clears records
     function isValidClear() {
-      return hasRequiredFields(['word', 'attempts', 'timestamp']) &&
-             request.resource.data.keys().hasOnly(['word', 'attempts', 'timestamp']) &&
-             validStringLength('word', 1, 20) &&
+      return hasRequiredFields(['gameId', 'attempts', 'timestamp']) &&
+             request.resource.data.keys().hasOnly(['gameId', 'attempts', 'timestamp']) &&
+             request.resource.data.gameId is string &&
+             request.resource.data.gameId.size() == 64 &&
              isPositiveNumber('attempts') &&
+             isRecent(request.resource.data.timestamp);
+    }
+
+    // Domain Validator for closest guesses records
+    function isValidClosestGuess() {
+      return hasRequiredFields(['gameId', 'score', 'timestamp']) &&
+             request.resource.data.keys().hasOnly(['gameId', 'score', 'timestamp']) &&
+             request.resource.data.gameId is string &&
+             request.resource.data.gameId.size() == 64 &&
+             request.resource.data.score is number &&
+             request.resource.data.score >= 0 &&
+             request.resource.data.score <= 100 &&
              isRecent(request.resource.data.timestamp);
     }
 
@@ -63,6 +76,18 @@ service cloud.firestore {
       allow create: if isValidClear();
       
       // Prevent editing or erasing clear records once written to ensure integrity
+      allow update, delete: if false;
+    }
+
+    // closest_guesses collection rules
+    match /closest_guesses/{guessId} {
+      // Allow anybody to read closest guesses to show on the dynamic leaderboard
+      allow read: if true;
+      
+      // Allow anyone to submit a close guess record with strict layout validation
+      allow create: if isValidClosestGuess();
+      
+      // Prevent editing or erasing guess records
       allow update, delete: if false;
     }
 
