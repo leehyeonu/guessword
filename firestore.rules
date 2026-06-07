@@ -1,0 +1,69 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file assumes the following data structures:
+//
+// Collection: clears
+// Document ID: auto-generated
+// Fields:
+//   - word: string (required, length 1-20) - The target word successfully guessed
+//   - attempts: number (required, positive integer) - Number of attempts taken to guess the word
+//   - timestamp: timestamp (required, recent) - Server timestamp when clear happened
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    // Validate that the document contains all required fields
+    function hasRequiredFields(fields) {
+       return request.resource.data.keys().hasAll(fields);
+    }
+    
+    // Validate string length constraints
+    function validStringLength(field, minLen, maxLen) {
+       return request.resource.data[field] is string &&
+         request.resource.data[field].size() >= minLen &&
+         request.resource.data[field].size() <= maxLen;
+    }
+    
+    // Validate that a numeric value is a positive integer
+    function isPositiveNumber(field) {
+      return request.resource.data[field] is number && request.resource.data[field] > 0;
+    }
+    
+    // Validate that the server timestamp is recent (within 5 minutes)
+    function isRecent(time) {
+      return time is timestamp &&
+             time > request.time - duration.value(5, 'm') &&
+             time <= request.time;
+    }
+    
+    // Domain Validator for game clears records
+    function isValidClear() {
+      return hasRequiredFields(['word', 'attempts', 'timestamp']) &&
+             request.resource.data.keys().hasOnly(['word', 'attempts', 'timestamp']) &&
+             validStringLength('word', 1, 20) &&
+             isPositiveNumber('attempts') &&
+             isRecent(request.resource.data.timestamp);
+    }
+
+    // clears collection rules
+    match /clears/{clearId} {
+      // Allow anybody to read clears to show on the live scoreboard ticker
+      allow read: if true;
+      
+      // Allow anyone to record their score, provided they pass strict data validation
+      allow create: if isValidClear();
+      
+      // Prevent editing or erasing clear records once written to ensure integrity
+      allow update, delete: if false;
+    }
+  }
+}

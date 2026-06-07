@@ -1,5 +1,5 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 // Firebase client configuration using Next.js client-safe environment variables.
 // Fallback mock credentials are provided so that the application compiles and launches
@@ -14,7 +14,7 @@ const firebaseConfig = {
 };
 
 // SSR safety & Hot-reloading guard: checks if Firebase is already initialized.
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+const db: Firestore = getFirestore(app);
 
 export { app, db };

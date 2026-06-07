@@ -13,17 +13,10 @@ interface ClearItem {
   timestamp: Date;
 }
 
-const OFFLINE_MOCK_CLEARS: ClearItem[] = [
-  { id: "mock-1", word: "노트북", attempts: 14, timestamp: new Date(Date.now() - 500000) },
-  { id: "mock-2", word: "강아지", attempts: 8, timestamp: new Date(Date.now() - 1500000) },
-  { id: "mock-3", word: "바나나", attempts: 21, timestamp: new Date(Date.now() - 3600000) },
-  { id: "mock-4", word: "자전거", attempts: 11, timestamp: new Date(Date.now() - 7200000) },
-  { id: "mock-5", word: "여름", attempts: 5, timestamp: new Date(Date.now() - 10800000) },
-];
-
 export default function ClearTicker() {
   const [clears, setClears] = useState<ClearItem[]>([]);
-  const [isOffline, setIsOffline] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -49,23 +42,20 @@ export default function ClearTicker() {
             });
           });
 
-          if (loadedClears.length > 0) {
-            setClears(loadedClears);
-            setIsOffline(false);
-          } else {
-            setClears(OFFLINE_MOCK_CLEARS);
-          }
+          setClears(loadedClears);
+          setErrorMsg("");
+          setIsLoading(false);
         },
         (error) => {
-          console.warn("Firestore listener failed. Switching to offline mockup:", error.message);
-          setIsOffline(true);
-          setClears(OFFLINE_MOCK_CLEARS);
+          console.error("Firestore listener failed:", error);
+          setErrorMsg("데이터베이스에서 기록을 읽을 수 없습니다. 환경변수(.env.local) 설정이나 보안 규칙을 확인해 주세요.");
+          setIsLoading(false);
         }
       );
-    } catch (err) {
-      console.warn("Firestore subscription caught exception:", err);
-      setIsOffline(true);
-      setClears(OFFLINE_MOCK_CLEARS);
+    } catch (err: any) {
+      console.error("Firestore subscription caught exception:", err);
+      setErrorMsg("Firebase DB 초기화 실패. 환경 설정을 점검해 주세요.");
+      setIsLoading(false);
     }
 
     return () => unsubscribe();
@@ -89,43 +79,53 @@ export default function ClearTicker() {
           <Award className="w-4 h-4 text-indigo-400 animate-pulse" />
           <h4 className="text-xs font-bold uppercase tracking-wider">실시간 클리어 현황</h4>
         </div>
-        
-        {isOffline && (
-          <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-white/5 text-slate-500 font-bold uppercase">
-            오프라인 모드
-          </span>
-        )}
       </div>
 
       <div className="space-y-2.5 max-h-[160px] overflow-y-auto pr-1">
-        <AnimatePresence initial={false}>
-          {clears.map((clear) => (
-            <motion.div
-              key={clear.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-white/5 border border-white/5"
-            >
-              <div className="flex items-center gap-2">
-                <Zap className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                <span className="font-semibold text-slate-300">
-                  누군가 <span className="text-indigo-400 font-bold">'{clear.word}'</span>을(를) 맞췄습니다!
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-[10px] text-slate-400 font-mono bg-indigo-500/10 px-1.5 py-0.5 rounded-md text-indigo-300 font-bold">
-                  {clear.attempts}회 시도
-                </span>
-                <span className="text-[9px] text-slate-500 min-w-[38px] text-right">
-                  {formatTimeAgo(clear.timestamp)}
-                </span>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {isLoading ? (
+          <div className="text-center text-xs text-slate-500 py-6">
+            데이터베이스 연결 중...
+          </div>
+        ) : errorMsg ? (
+          <div className="text-center text-xs text-red-400 bg-red-950/20 border border-red-500/10 p-4 rounded-2xl leading-relaxed">
+            {errorMsg}
+          </div>
+        ) : clears.length > 0 ? (
+          <AnimatePresence initial={false}>
+            {clears.map((clear) => (
+              <motion.div
+                key={clear.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-white/5 border border-white/5"
+              >
+                <div className="flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span className="font-semibold text-slate-300">
+                    누군가 <span className="text-indigo-400 font-bold">'{clear.word}'</span>을(를) 맞췄습니다!
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] text-slate-400 font-mono bg-indigo-500/10 px-1.5 py-0.5 rounded-md text-indigo-300 font-bold">
+                    {clear.attempts}회 시도
+                  </span>
+                  <span className="text-[9px] text-slate-500 min-w-[38px] text-right">
+                    {formatTimeAgo(clear.timestamp)}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        ) : (
+          <div className="text-center text-xs text-slate-500 py-6 leading-relaxed">
+            아직 등록된 기록이 없습니다. <br />
+            첫 번째 클리어의 주인공이 되어 보세요!
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

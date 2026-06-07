@@ -188,7 +188,8 @@ export default function GamePage() {
     setIsLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = rawApiUrl.replace(/\/$/, "");
       const response = await fetch(`${apiUrl}/api/guess`, {
         method: "POST",
         headers: {
@@ -247,7 +248,8 @@ export default function GamePage() {
     
     let verifiedWord = "";
     const maxRetries = 6;
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiUrl = rawApiUrl.replace(/\/$/, "");
 
     // Randomize word pool search and validate OOV dynamically via backend before loading
     for (let attempt = 0; attempt < maxRetries; attempt++) {
