@@ -27,7 +27,7 @@ fi
 echo "=========================================="
 echo "🤗 3. Hugging Face Spaces에 백엔드 소스 푸시 중..."
 echo "=========================================="
-git subtree push --prefix=backend huggingface main
+git push huggingface `git subtree split --prefix=backend main`:main --force
 
 if [ $? -ne 0 ]; then
     echo "❌ Hugging Face 푸시 실패."

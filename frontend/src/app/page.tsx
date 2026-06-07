@@ -334,6 +334,9 @@ export default function GamePage() {
           setLocalBestScore(score);
           localStorage.setItem(`guessword_best_score_${gameId}`, score.toString());
           await logClosestGuessToFirestore(data.game_id, score);
+          if (score > globalBestScore) {
+            setGlobalBestScore(score);
+          }
         }
       }
     } catch (err) {
