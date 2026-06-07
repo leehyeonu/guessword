@@ -1,0 +1,28 @@
+# FastText Models (Crucial: Prevents GitHub errors with 4.5GB binary files)
+models/
+*.bin
+*.gz
+
+# Python virtual environment
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Node & Next.js dependencies / build cache
+node_modules/
+.next/
+out/
+.turbo
+
+# Local Environment variables
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS and IDE configuration files
+.vscode/
+.DS_Store
+Thumbs.db

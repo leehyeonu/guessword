@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: guessword-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Bind mount the host's models directory to the container.
+      # This keeps the massive 4.5GB model file out of the image build context,
+      # keeping builds fast and image size small.
+      - ./models:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        limits:
+          memory: 8g       # Set upper cap memory to 8GB (ideal for Oracle ARM VM configs)
+        reservations:
+          memory: 4g       # Pre-allocate 4GB at startup
+    restart: unless-stopped
