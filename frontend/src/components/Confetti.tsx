@@ -34,11 +34,11 @@ export default function Confetti() {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
-    // Generate 85 custom particle specifications on mount
+    // 컴포넌트 마운트 시 85개의 커스텀 파티클 데이터 생성
     const generated: Particle[] = Array.from({ length: 85 }).map((_, i) => {
-      const angle = Math.random() * Math.PI * 2; // Radial direction
-      const velocity = 4 + Math.random() * 8; // Speed
-      const size = 6 + Math.random() * 8; // Dimension
+      const angle = Math.random() * Math.PI * 2; // 방사형 방향
+      const velocity = 4 + Math.random() * 8; // 속도
+      const size = 6 + Math.random() * 8; // 크기
       const color = COLORS[Math.floor(Math.random() * COLORS.length)];
       const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
 
@@ -60,10 +60,10 @@ export default function Confetti() {
   return (
     <div className="fixed inset-0 pointer-events-none z-40 overflow-hidden flex items-center justify-center">
       {particles.map((p) => {
-        // Compute vectors for initial velocity explosion and downward gravity fall
+        // 초기 속력 폭발 및 중력으로 인한 하강에 대한 벡터 계산
         const targetX = Math.cos(p.angle) * p.velocity * 38;
-        const targetYUp = Math.sin(p.angle) * p.velocity * 25 - 120; // Peak elevation
-        const targetYDown = targetYUp + 400 + Math.random() * 250;   // Fall under gravity
+        const targetYUp = Math.sin(p.angle) * p.velocity * 25 - 120; // 최고 높이
+        const targetYDown = targetYUp + 400 + Math.random() * 250;   // 중력에 의해 하강
 
         return (
           <motion.div

@@ -47,13 +47,13 @@ export default function ClearTicker() {
           setIsLoading(false);
         },
         (error) => {
-          console.error("Firestore listener failed:", error);
+          console.error("Firestore 리스너 에러:", error);
           setErrorMsg("데이터베이스에서 기록을 읽을 수 없습니다. 환경변수(.env.local) 설정이나 보안 규칙을 확인해 주세요.");
           setIsLoading(false);
         }
       );
     } catch (err: any) {
-      console.error("Firestore subscription caught exception:", err);
+      console.error("Firestore 구독 예외 발생:", err);
       setErrorMsg("Firebase DB 초기화 실패. 환경 설정을 점검해 주세요.");
       setIsLoading(false);
     }

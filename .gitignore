@@ -17,10 +17,12 @@ out/
 .turbo
 
 # Local Environment variables
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+backend/.env
 
 # OS and IDE configuration files
 .vscode/

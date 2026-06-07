@@ -65,5 +65,23 @@ service cloud.firestore {
       // Prevent editing or erasing clear records once written to ensure integrity
       allow update, delete: if false;
     }
+
+    // settings validator
+    function isValidSetting() {
+      return request.resource.data.keys().hasAll(['gameId', 'targetWordHash']) &&
+             request.resource.data.gameId is string &&
+             request.resource.data.gameId.size() == 36 &&
+             request.resource.data.targetWordHash is string &&
+             request.resource.data.targetWordHash.size() == 64;
+    }
+
+    // settings collection rules
+    match /settings/{settingId} {
+      // Allow anybody to read settings to retrieve the game metadata
+      allow read: if true;
+      
+      // Allow anyone to write/update settings with basic format validation
+      allow write: if isValidSetting();
+    }
   }
 }

@@ -19,7 +19,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Glass Overlay backdrop */}
+          {/* 글래스 오버레이 배경 */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -28,7 +28,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
             className="absolute inset-0 bg-black/60 backdrop-blur-md"
           />
 
-          {/* Modal Container */}
+          {/* 모달 컨테이너 */}
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -36,11 +36,11 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
             transition={{ type: "spring", duration: 0.5 }}
             className="liquid-glass w-full max-w-lg rounded-3xl p-6 md:p-8 relative overflow-hidden text-slate-100 z-10"
           >
-            {/* Ambient Background Light inside modal */}
+            {/* 모달 내부의 은은한 배경 광원 */}
             <div className="absolute -top-20 -right-20 w-44 h-44 rounded-full bg-violet-600/20 blur-3xl pointer-events-none" />
             <div className="absolute -bottom-20 -left-20 w-44 h-44 rounded-full bg-pink-600/20 blur-3xl pointer-events-none" />
 
-            {/* Header */}
+            {/* 헤더 */}
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2.5 rounded-2xl bg-white/5 border border-white/10 text-violet-400">
                 <BookOpen className="w-6 h-6" />
@@ -50,7 +50,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
               </h2>
             </div>
 
-            {/* Tutorial Rules List */}
+            {/* 튜토리얼 규칙 목록 */}
             <div className="space-y-5 my-6 text-sm md:text-base leading-relaxed text-slate-300">
               <div className="flex items-start gap-4 p-3 rounded-2xl bg-white/5 border border-white/5">
                 <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400 shrink-0">
@@ -89,7 +89,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
               </div>
             </div>
 
-            {/* Close Button */}
+            {/* 닫기 버튼 */}
             <div className="mt-8 flex justify-end">
               <button
                 onClick={handleClose}

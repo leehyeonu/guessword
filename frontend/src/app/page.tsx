@@ -18,10 +18,9 @@ import {
 } from "lucide-react";
 
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, onSnapshot } from "firebase/firestore";
 
 import TutorialModal from "@/components/TutorialModal";
-import AdminPanel from "@/components/AdminPanel";
 import Toast from "@/components/Toast";
 import Confetti from "@/components/Confetti";
 import ClearTicker from "@/components/ClearTicker";
@@ -33,58 +32,69 @@ interface GuessHistoryItem {
   timestamp: string;
 }
 
-// Random word list for Infinite Mode challenge pool
-const RANDOM_WORDS = [
-  "사랑", "행복", "학교", "가족", "친구", "바다", "하늘", "나무", "자동차", "컴퓨터",
-  "스마트폰", "음악", "노래", "영화", "도서관", "겨울", "여름", "커피", "시간", "하루",
-  "선물", "그림", "사진", "우주", "비행기", "자전거", "책상", "마우스", "호수", "바람",
-  "구름", "기차", "가방", "과자", "피아노", "축구", "여행", "고양이", "강아지", "소나무"
-];
-
 export default function GamePage() {
-  // Game States
-  const [targetWord, setTargetWord] = useState("사과");
+  // 게임 상태
+  const [gameId, setGameId] = useState("");
+  const [targetWord, setTargetWord] = useState("");
   const [guessInput, setGuessInput] = useState("");
   const [history, setHistory] = useState<GuessHistoryItem[]>([]);
   const [currentGuess, setCurrentGuess] = useState<GuessHistoryItem | null>(null);
   
-  // UI & Overlay States
+  // UI 및 오버레이 상태
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isGameWon, setIsGameWon] = useState(false);
 
-  // Toast States
+  // 토스트 상태
   const [toastMessage, setToastMessage] = useState("");
   const [isToastOpen, setIsToastOpen] = useState(false);
 
   const historyEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize from LocalStorage
+
+
+  // LocalStorage에서 데이터 초기화 및 백엔드 game_id 세션 체크
   useEffect(() => {
-    // 1. Tutorial state check
+    // 1. 튜토리얼 확인 여부 체크
     const seenTutorial = localStorage.getItem("guessword_tutorial_seen");
     if (!seenTutorial) {
       setIsTutorialOpen(true);
     }
 
-    // 2. Load target word
-    const savedTarget = localStorage.getItem("guessword_target_word");
-    let activeTarget = "사과";
-    if (savedTarget) {
-      setTargetWord(savedTarget);
-      activeTarget = savedTarget;
-    } else {
-      localStorage.setItem("guessword_target_word", "사과");
-    }
+    // 2. 백엔드에서 현재 글로벌 게임 ID를 가져옴
+    const fetchGameInfo = async () => {
+      try {
+        const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const apiUrl = rawApiUrl.replace(/\/$/, "");
+        const response = await fetch(`${apiUrl}/api/game_info`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.game_id) {
+            setGameId(data.game_id);
+          }
+        } else {
+          throw new Error("Game info fetch failed");
+        }
+      } catch (error) {
+        console.error("서버에서 게임 정보 로드 실패:", error);
+        // 실패 시 로컬에 저장되어 있던 게임 ID를 유지하여 로컬 백업으로 기동
+        const savedGameId = localStorage.getItem("guessword_game_id") || "default-game-id";
+        setGameId(savedGameId);
+      }
+    };
 
-    // 3. Load guess history
+    fetchGameInfo();
+  }, []);
+
+  // gameId가 변경될 때 로컬 기록 정합성 체크 및 자동 초기화
+  useEffect(() => {
+    if (!gameId) return;
+
+    const savedGameId = localStorage.getItem("guessword_game_id");
     const savedHistory = localStorage.getItem("guessword_history");
-    const savedHistoryTarget = localStorage.getItem("guessword_history_target");
 
-    if (savedHistory && savedHistoryTarget === activeTarget) {
+    if (savedGameId === gameId && savedHistory) {
       try {
         const parsed = JSON.parse(savedHistory) as GuessHistoryItem[];
         setHistory(parsed);
@@ -94,33 +104,43 @@ export default function GamePage() {
           );
           setCurrentGuess(sortedByTime[0]);
           
-          if (sortedByTime.some(item => item.word === activeTarget)) {
+          // 로컬 스토리지에 저장해 둔 정답 단어 복구
+          const savedTarget = localStorage.getItem("guessword_target_word") || "";
+          
+          if (savedTarget && sortedByTime.some(item => item.word === savedTarget)) {
+            setTargetWord(savedTarget);
             setIsGameWon(true);
+          } else {
+            setTargetWord("");
+            setIsGameWon(false);
           }
+        } else {
+          setCurrentGuess(null);
+          setTargetWord("");
+          setIsGameWon(false);
         }
       } catch (e) {
-        console.error("Failed to parse history from localStorage", e);
+        console.error("localStorage에서 기록을 파싱하는 데 실패했습니다.", e);
+        setHistory([]);
+        setCurrentGuess(null);
+        setTargetWord("");
+        setIsGameWon(false);
       }
+    } else {
+      // 게임 ID가 변경되었거나 기록이 없으면 이전 시도 내역 초기화
+      setHistory([]);
+      setCurrentGuess(null);
+      setTargetWord("");
+      setIsGameWon(false);
+      localStorage.setItem("guessword_game_id", gameId);
+      localStorage.setItem("guessword_history", JSON.stringify([]));
+      localStorage.removeItem("guessword_target_word");
     }
-  }, []);
+  }, [gameId]);
 
-  const saveGameState = (newHistory: GuessHistoryItem[], newTarget: string) => {
-    localStorage.setItem("guessword_history", JSON.stringify(newHistory));
-    localStorage.setItem("guessword_history_target", newTarget);
-  };
 
-  const handleSetTargetWord = (newWord: string) => {
-    setTargetWord(newWord);
-    localStorage.setItem("guessword_target_word", newWord);
-    
-    // Reset state
-    setHistory([]);
-    setCurrentGuess(null);
-    setIsGameWon(false);
-    saveGameState([], newWord);
-  };
 
-  // Toast alert trigger helper
+  // 토스트 알림 트리거 헬퍼
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
     setIsToastOpen(true);
@@ -148,22 +168,22 @@ export default function GamePage() {
       oscillator.start();
       oscillator.stop(audioCtx.currentTime + 0.6);
     } catch (e) {
-      console.warn("Audio Context blocked", e);
+      console.warn("오디오 컨텍스트가 차단되었습니다", e);
     }
   };
 
   const logClearToFirestore = async (word: string, totalAttempts: number) => {
     try {
-      // Save data [attempts, word, timestamp] into clears collection
+      // clears 컬렉션에 데이터 저장 [시도 횟수, 단어, 타임스탬프]
       await addDoc(collection(db, "clears"), {
         word: word,
         attempts: totalAttempts,
         timestamp: serverTimestamp(),
       });
-      console.log("Victory log successfully written to Firestore clears.");
+      console.log("Firestore clears에 성공적으로 승리 로그를 기록했습니다.");
     } catch (err) {
       console.warn(
-        "Could not log victory to Firestore (app is running in offline mode or config is missing):",
+        "Firestore에 승리 로그를 기록할 수 없습니다 (앱이 오프라인 모드이거나 설정이 누락됨):",
         err
       );
     }
@@ -196,7 +216,6 @@ export default function GamePage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          target_word: targetWord,
           guess_word: cleanGuess,
         }),
       });
@@ -209,8 +228,23 @@ export default function GamePage() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle OOV or general api errors dynamically via liquid glass toast alerts
+        // 리퀴드 글래스 토스트 알림을 통해 OOV 또는 일반 API 에러를 동적으로 처리
         triggerToast(data.detail || "사전에 없는 단어입니다.");
+        return;
+      }
+
+      // 게임 ID(정답 해시)의 실시간 변동 체크 (어드민이 env 단어를 바꾸어 서버를 재시작한 경우 감지)
+      if (data.game_id && data.game_id !== gameId) {
+        triggerToast("정답 단어가 글로벌하게 변경되었습니다! 게임이 초기화됩니다.");
+        setGameId(data.game_id);
+        setHistory([]);
+        setCurrentGuess(null);
+        setTargetWord("");
+        setIsGameWon(false);
+        setGuessInput("");
+        localStorage.setItem("guessword_game_id", data.game_id);
+        localStorage.setItem("guessword_history", JSON.stringify([]));
+        localStorage.removeItem("guessword_target_word");
         return;
       }
 
@@ -225,14 +259,18 @@ export default function GamePage() {
       setHistory(updatedHistory);
       setCurrentGuess(newGuess);
       setGuessInput("");
-      saveGameState(updatedHistory, targetWord);
+      
+      // 로컬 스토리지에 추측 역사 저장
+      localStorage.setItem("guessword_history", JSON.stringify(updatedHistory));
 
       playChime(newGuess.score);
 
-      if (cleanGuess === targetWord) {
+      if (data.is_correct) {
         setIsGameWon(true);
-        // Write attempts metadata synchronously to Firebase Firestore clears collection
-        await logClearToFirestore(targetWord, updatedHistory.length);
+        setTargetWord(data.target_word);
+        localStorage.setItem("guessword_target_word", data.target_word);
+        // Firebase Firestore clears 컬렉션에 시도 횟수 메타데이터를 동기적으로 작성
+        await logClearToFirestore(data.target_word, updatedHistory.length);
       }
     } catch (err) {
       triggerToast("서버 통신 에러가 발생했습니다. 백엔드가 켜져 있는지 확인하세요.");
@@ -242,60 +280,12 @@ export default function GamePage() {
     }
   };
 
-  // Infinite Mode challenge reset
-  const handleNextChallenge = async () => {
-    setIsResetting(true);
-    
-    let verifiedWord = "";
-    const maxRetries = 6;
-    const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const apiUrl = rawApiUrl.replace(/\/$/, "");
-
-    // Randomize word pool search and validate OOV dynamically via backend before loading
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const randomIndex = Math.floor(Math.random() * RANDOM_WORDS.length);
-      const chosenWord = RANDOM_WORDS[randomIndex];
-      
-      // Make sure the chosen word is not the current target
-      if (chosenWord === targetWord) continue;
-
-      try {
-        const response = await fetch(`${apiUrl}/api/validate_target`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ target_word: chosenWord }),
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.valid) {
-            verifiedWord = chosenWord;
-            break;
-          }
-        }
-      } catch (err) {
-        console.warn("Verification connection failed during challenge reset. Falling back to raw word.", err);
-        // If backend is unreachable, accept the local pool word as fallback to keep game running
-        verifiedWord = chosenWord;
-        break;
-      }
-    }
-
-    if (!verifiedWord) {
-      // Absolute fallback if loops failed
-      verifiedWord = RANDOM_WORDS[Math.floor(Math.random() * RANDOM_WORDS.length)];
-    }
-
-    handleSetTargetWord(verifiedWord);
-    setIsResetting(false);
-  };
-
   const handleResetGame = () => {
     if (confirm("현재 게임 기록을 초기화하시겠습니까?")) {
       setHistory([]);
       setCurrentGuess(null);
       setIsGameWon(false);
-      saveGameState([], targetWord);
+      localStorage.setItem("guessword_history", JSON.stringify([]));
     }
   };
 
@@ -371,23 +361,16 @@ export default function GamePage() {
           >
             <HelpCircle className="w-4 h-4" />
           </button>
-
-          {/* Secret Settings Dot */}
-          <button
-            onClick={() => setIsAdminOpen(true)}
-            className="w-2.5 h-2.5 rounded-full bg-slate-800 hover:bg-slate-500 transition cursor-pointer mx-1.5 self-center opacity-40 hover:opacity-100"
-            title="정답 설정"
-          />
         </div>
       </header>
 
-      {/* Layout Grid: 2 columns on desktop for game and real-time scoreboard clears */}
+      {/* 레이아웃 그리드: 게임 및 실시간 클리어 현황 전광판을 위해 데스크톱에서 2개 열로 표시 */}
       <div className="w-full flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start my-auto py-2">
         
-        {/* Left/Center Columns: Game Body */}
+        {/* 왼쪽/중앙 열: 게임 본문 */}
         <div className="lg:col-span-2 flex flex-col items-center justify-center relative w-full">
           
-          {/* Back Glowing light */}
+          {/* 배경 네온 불빛 */}
           <motion.div
             className="absolute -inset-6 rounded-3xl blur-3xl -z-10 transition-colors duration-700 pointer-events-none"
             animate={{
@@ -403,10 +386,10 @@ export default function GamePage() {
             transition={{ type: "spring", stiffness: 85, damping: 22 }}
           />
 
-          {/* Liquid Glass Main Panel */}
+          {/* 리퀴드 글래스 메인 패널 */}
           <div className="liquid-glass w-full rounded-3xl p-6 md:p-8 flex flex-col items-center relative overflow-hidden mb-6">
             
-            {/* Victory Layer */}
+            {/* 승리 레이어 */}
             <AnimatePresence>
               {isGameWon && (
                 <motion.div
@@ -428,37 +411,25 @@ export default function GamePage() {
                     총 <span className="font-bold text-indigo-400">{history.length}</span>회 만에 정답 단어인 <span className="font-black text-amber-400">"{targetWord}"</span>을(를) 맞췄습니다.
                   </p>
                   
-                  <div className="flex gap-2.5">
-                    <button
-                      onClick={handleResetGame}
-                      className="liquid-glass liquid-glass-interactive px-5 py-2.5 rounded-2xl text-xs font-semibold text-slate-300 cursor-pointer active:scale-95"
-                    >
-                      기록 초기화
-                    </button>
+                  <div className="flex flex-col items-center gap-4">
+                    <p className="text-xs text-indigo-300/80 bg-indigo-950/20 border border-indigo-500/10 px-4 py-2 rounded-2xl">
+                      💡 관리자가 다음 정답 단어를 출제할 때까지 잠시 대기해 주세요.
+                    </p>
                     
-                    <button
-                      onClick={handleNextChallenge}
-                      disabled={isResetting}
-                      className="liquid-glass liquid-glass-interactive px-6 py-2.5 rounded-2xl text-xs font-bold text-indigo-300 hover:text-indigo-200 cursor-pointer active:scale-95 flex items-center gap-1.5"
-                    >
-                      {isResetting ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          다음 단어 검증 중...
-                        </>
-                      ) : (
-                        <>
-                          다음 단어 도전하기
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </>
-                      )}
-                    </button>
+                    <div className="flex gap-2.5">
+                      <button
+                        onClick={handleResetGame}
+                        className="liquid-glass liquid-glass-interactive px-5 py-2.5 rounded-2xl text-xs font-semibold text-slate-300 cursor-pointer active:scale-95"
+                      >
+                        내 기록 초기화
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Current Score Display */}
+            {/* 현재 점수 화면 */}
             <div className="w-full flex flex-col items-center mb-6 text-center">
               {currentGuess ? (
                 <motion.div
@@ -516,7 +487,7 @@ export default function GamePage() {
               )}
             </div>
 
-            {/* Guess Input Form */}
+            {/* 추측 입력 폼 */}
             <form onSubmit={handleGuessSubmit} className="w-full relative mt-4">
               <div className="relative flex items-center">
                 <input
@@ -542,7 +513,7 @@ export default function GamePage() {
             </form>
           </div>
 
-          {/* Bottom History List */}
+          {/* 하단 시도 기록 목록 */}
           <div className="w-full flex flex-col mb-4 min-h-[220px]">
             <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-3">
               <div className="flex items-center gap-1.5">
@@ -608,24 +579,17 @@ export default function GamePage() {
           </div>
         </div>
 
-        {/* Right Column: Live Ticker (Sidebar style) */}
+        {/* 오른쪽 열: 실시간 현황 (사이드바 스타일) */}
         <div className="lg:col-span-1 w-full space-y-4">
           <ClearTicker />
         </div>
 
       </div>
 
-      {/* Modals & Overlays */}
+      {/* 모달 및 오버레이 */}
       <TutorialModal
         isOpen={isTutorialOpen}
         onClose={() => setIsTutorialOpen(false)}
-      />
-
-      <AdminPanel
-        isOpen={isAdminOpen}
-        onClose={() => setIsAdminOpen(false)}
-        currentTargetWord={targetWord}
-        onSetTargetWord={handleSetTargetWord}
       />
     </main>
   );
