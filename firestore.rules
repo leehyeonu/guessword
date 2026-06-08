@@ -105,8 +105,8 @@ service cloud.firestore {
       // Allow anybody to read settings to retrieve the game metadata
       allow read: if true;
       
-      // Allow anyone to write/update settings with basic format validation
-      allow write: if isValidSetting();
+      // Lock down write access to settings as it is now managed via backend .env and variables
+      allow write: if false;
     }
   }
 }

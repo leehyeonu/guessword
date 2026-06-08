@@ -55,6 +55,7 @@ export default function GamePage() {
   const [isToastOpen, setIsToastOpen] = useState(false);
 
   const historyEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
 
 
@@ -250,6 +251,17 @@ export default function GamePage() {
     e.preventDefault();
     const cleanGuess = guessInput.trim();
     if (!cleanGuess) return;
+
+    // 한글 단어 이외의 부적절한 특수문자, 숫자, 자음/모음 초성 단독 차단
+    const koreanRegex = /^[가-힣]+$/;
+    if (!koreanRegex.test(cleanGuess)) {
+      triggerToast("올바른 한국어 단어만 입력해 주세요. (자/모음 단독, 숫자, 영어, 기호 제외)");
+      setGuessInput("");
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      return;
+    }
     
     if (isGameWon) {
       triggerToast("이미 정답을 맞추셨습니다! 다음 도전을 누르거나 설정을 바꿔보세요.");
@@ -344,6 +356,9 @@ export default function GamePage() {
       console.error(err);
     } finally {
       setIsLoading(false);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
     }
   };
 
@@ -594,6 +609,7 @@ export default function GamePage() {
             <form onSubmit={handleGuessSubmit} className="w-full relative mt-4">
               <div className="relative flex items-center">
                 <input
+                  ref={inputRef}
                   type="text"
                   placeholder={isGameWon ? "축하합니다! 정답입니다." : "추측 단어 입력..."}
                   value={guessInput}
