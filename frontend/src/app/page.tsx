@@ -8,12 +8,10 @@ import {
   Send, 
   RotateCcw, 
   Sparkles, 
-  Settings, 
   ListFilter,
   Volume2,
   VolumeX,
   Trophy,
-  ArrowRight,
   Loader2
 } from "lucide-react";
 
@@ -33,49 +31,45 @@ interface GuessHistoryItem {
 }
 
 export default function GamePage() {
-  // 게임 상태
+  // 상태 변수들
   const [gameId, setGameId] = useState("");
   const [targetWord, setTargetWord] = useState("");
   const [guessInput, setGuessInput] = useState("");
   const [history, setHistory] = useState<GuessHistoryItem[]>([]);
   const [currentGuess, setCurrentGuess] = useState<GuessHistoryItem | null>(null);
   
-  // 세션 최고 점수 상태
+  // 최고 기록
   const [localBestScore, setLocalBestScore] = useState(0);
   const [globalBestScore, setGlobalBestScore] = useState(0);
 
-  // 정렬 필터 상태 ("score" = 점수순, "time" = 최신순)
+  // 정렬 순서 (score = 점수높은순, time = 최신순)
   const [historySortOrder, setHistorySortOrder] = useState<"score" | "time">("score");
 
-  // UI 및 오버레이 상태
+  // UI 토글
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isGameWon, setIsGameWon] = useState(false);
 
-  // 토스트 상태
+  // 토스트 메시지
   const [toastMessage, setToastMessage] = useState("");
   const [isToastOpen, setIsToastOpen] = useState(false);
 
   const historyEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 입력창 쉐이크 에러 효과 상태
+  // 입력창 흔들림 효과 트리거용
   const [shouldShakeInput, setShouldShakeInput] = useState(false);
 
-
-
-  // LocalStorage에서 데이터 초기화 및 백엔드 game_id 세션 체크
+  // 최초 로드 시 설정 복구 및 서버 세션 체크
   useEffect(() => {
-    // 1. 튜토리얼 확인 여부 체크
+    // 튜토리얼 아직 안 봤으면 띄워주기
     const seenTutorial = localStorage.getItem("guessword_tutorial_seen");
     if (!seenTutorial) {
       setIsTutorialOpen(true);
     }
 
-
-
-    // 3. 백엔드에서 현재 글로벌 게임 ID를 가져옴
+    // 서버에서 현재 활성화된 게임 세션 ID 가져오기
     const fetchGameInfo = async () => {
       try {
         const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -90,8 +84,8 @@ export default function GamePage() {
           throw new Error("Game info fetch failed");
         }
       } catch (error) {
-        console.error("서버에서 게임 정보 로드 실패:", error);
-        // 실패 시 로컬에 저장되어 있던 게임 ID를 유지하여 로컬 백업으로 기동
+        console.error("게임 세션 로드 실패:", error);
+        // 서버 연결 실패 시 로컬 백업 세션 유지
         const savedGameId = localStorage.getItem("guessword_game_id") || "default-game-id";
         setGameId(savedGameId);
       }
@@ -100,7 +94,7 @@ export default function GamePage() {
     fetchGameInfo();
   }, []);
 
-  // gameId가 변경될 때 로컬 기록 정합성 체크 및 자동 초기화
+  // 게임 세션 ID가 바뀔 때 상태 초기화 및 로컬 기록 매핑
   useEffect(() => {
     if (!gameId) return;
 
@@ -119,7 +113,6 @@ export default function GamePage() {
           );
           setCurrentGuess(sortedByTime[0]);
           
-          // 로컬 스토리지에 저장해 둔 정답 단어 복구
           const savedTarget = localStorage.getItem("guessword_target_word") || "";
           
           if (savedTarget && sortedByTime.some(item => item.word === savedTarget)) {
@@ -135,11 +128,11 @@ export default function GamePage() {
           setIsGameWon(false);
         }
 
-        // 로컬 최고 점수 로드
+        // 로컬 최고 점수 복구
         const savedBest = localStorage.getItem(`guessword_best_score_${gameId}`);
         setLocalBestScore(savedBest ? Number(savedBest) : 0);
       } catch (e) {
-        console.error("localStorage에서 기록을 파싱하는 데 실패했습니다.", e);
+        console.error("로컬 기록 파싱 에러:", e);
         setHistory([]);
         setCurrentGuess(null);
         setTargetWord("");
@@ -147,7 +140,7 @@ export default function GamePage() {
         setLocalBestScore(0);
       }
     } else {
-      // 게임 ID가 변경되었거나 기록이 없으면 이전 시도 내역 초기화
+      // 새로운 게임 세션 시작 시 로컬 기록 날리고 초기화
       setHistory([]);
       setCurrentGuess(null);
       setTargetWord("");
@@ -161,7 +154,7 @@ export default function GamePage() {
       }
     }
 
-    // Firestore에서 실시간으로 해당 게임의 최고 점수 구독
+    // Firestore에서 실시간 최고 점수 구독
     try {
       const q = query(
         collection(db, "closest_guesses"),
@@ -178,10 +171,10 @@ export default function GamePage() {
         });
         setGlobalBestScore(maxScore);
       }, (err) => {
-        console.error("실시간 최고 점수 로드 실패:", err);
+        console.error("실시간 랭킹 로드 실패:", err);
       });
     } catch (e) {
-      console.error("실시간 최고 점수 구독 중 오류:", e);
+      console.error("최고 점수 실시간 리스너 에러:", e);
     }
 
     return () => {
@@ -189,15 +182,13 @@ export default function GamePage() {
     };
   }, [gameId]);
 
-
-
-  // 토스트 알림 트리거 헬퍼
+  // 기본 토스트 알림
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
     setIsToastOpen(true);
   };
 
-  // 입력 에러 트리거 헬퍼 (흔들림 + 햅틱 진동 + 토스트)
+  // 입력 에러 트리거 (흔들기 + 진동 + 토스트)
   const triggerError = (msg: string) => {
     triggerToast(msg);
     setShouldShakeInput(true);
@@ -209,13 +200,14 @@ export default function GamePage() {
     }, 400);
   };
 
+  // 유사도에 따른 효과음 재생
   const playChime = (score: number) => {
     if (!soundEnabled) return;
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       
       if (score === 100) {
-        // 승리 시 C major chord arpeggio (C4-E4-G4-C5) 화음 스케줄링
+        // 정답 시 도-미-솔-도 아르페지오 화음 스케줄링
         const notes = [261.63, 329.63, 392.00, 523.25];
         notes.forEach((freq, index) => {
           const osc = audioCtx.createOscillator();
@@ -233,6 +225,7 @@ export default function GamePage() {
           osc.stop(audioCtx.currentTime + index * 0.12 + 0.5);
         });
       } else {
+        // 평소 입력 시 단일 효과음
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
         
@@ -252,10 +245,11 @@ export default function GamePage() {
         oscillator.stop(audioCtx.currentTime + 0.6);
       }
     } catch (e) {
-      console.warn("오디오 컨텍스트가 차단되었습니다", e);
+      console.warn("오디오 재생 실패:", e);
     }
   };
 
+  // 최고 근접 기록 저장
   const logClosestGuessToFirestore = async (currentGameId: string, currentScore: number) => {
     try {
       await addDoc(collection(db, "closest_guesses"), {
@@ -263,35 +257,32 @@ export default function GamePage() {
         score: currentScore,
         timestamp: serverTimestamp(),
       });
-      console.log("Firestore closest_guesses에 성공적으로 근접 추측을 기록했습니다.");
     } catch (err) {
-      console.warn("Firestore에 근접 추측을 기록할 수 없습니다:", err);
+      console.warn("기록 저장 실패 (네트워크 혹은 파이어베이스 키 확인 필요):", err);
     }
   };
 
+  // 게임 클리어 기록 저장
   const logClearToFirestore = async (currentGameId: string, totalAttempts: number) => {
     try {
-      // clears 컬렉션에 데이터 저장 [시도 횟수, 게임 ID, 타임스탬프]
       await addDoc(collection(db, "clears"), {
         gameId: currentGameId,
         attempts: totalAttempts,
         timestamp: serverTimestamp(),
       });
-      console.log("Firestore clears에 성공적으로 승리 로그를 기록했습니다.");
     } catch (err) {
-      console.warn(
-        "Firestore에 승리 로그를 기록할 수 없습니다 (앱이 오프라인 모드이거나 설정이 누락됨):",
-        err
-      );
+      console.warn("클리어 로그 저장 실패:", err);
     }
   };
 
+  // 단어 제출 이벤트 핸들러
   const handleGuessSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // 맥/iOS 등 자모 분리 방지를 위해 NFC 표준형으로 정규화
     const cleanGuess = guessInput.normalize("NFC").trim();
     if (!cleanGuess) return;
 
-    // 한글 단어 이외의 부적절한 특수문자, 숫자, 자음/모음 초성 단독 차단
+    // 한글 단어 이외의 부적절한 입력 차단 (완전한 가-힣 글자만 허용)
     const koreanRegex = /^[가-힣]+$/;
     if (!koreanRegex.test(cleanGuess)) {
       triggerError("올바른 한국어 단어만 입력해 주세요. (자/모음 단독, 숫자, 영어, 기호 제외)");
@@ -303,7 +294,7 @@ export default function GamePage() {
     }
     
     if (isGameWon) {
-      triggerError("이미 정답을 맞추셨습니다! 다음 도전을 누르거나 설정을 바꿔보세요.");
+      triggerError("이미 정답을 맞추셨습니다! 다음 도전을 기다려주세요.");
       return;
     }
 
@@ -336,14 +327,13 @@ export default function GamePage() {
       const data = await response.json();
 
       if (!response.ok) {
-        // 리퀴드 글래스 토스트 알림을 통해 OOV 또는 일반 API 에러를 동적으로 처리
         triggerError(data.detail || "사전에 없는 단어입니다.");
         return;
       }
 
-      // 게임 ID(정답 해시)의 실시간 변동 체크 (어드민이 env 단어를 바꾸어 서버를 재시작한 경우 감지)
+      // 백엔드 정답이 도중에 변경되었을 경우 리로드 유도
       if (data.game_id && data.game_id !== gameId) {
-        triggerToast("정답 단어가 글로벌하게 변경되었습니다! 게임이 초기화됩니다.");
+        triggerToast("정답 단어가 변경되어 새로운 게임이 시작됩니다!");
         setGameId(data.game_id);
         setHistory([]);
         setCurrentGuess(null);
@@ -368,7 +358,6 @@ export default function GamePage() {
       setCurrentGuess(newGuess);
       setGuessInput("");
       
-      // 로컬 스토리지에 추측 역사 저장
       localStorage.setItem("guessword_history", JSON.stringify(updatedHistory));
 
       playChime(newGuess.score);
@@ -378,12 +367,11 @@ export default function GamePage() {
         setTargetWord(data.target_word);
         localStorage.setItem("guessword_target_word", data.target_word);
         
-        // 햅틱 승리 진동 피드백
+        // 정답 성공 시 스마트폰 진동 피드백
         if (typeof navigator !== "undefined" && navigator.vibrate) {
           navigator.vibrate([100, 50, 100]);
         }
 
-        // Firebase Firestore clears 컬렉션에 시도 횟수 메타데이터를 동기적으로 작성
         await logClearToFirestore(data.game_id, updatedHistory.length);
       } else {
         const score = data.score;
@@ -397,7 +385,7 @@ export default function GamePage() {
         }
       }
     } catch (err) {
-      triggerError("서버 통신 에러가 발생했습니다. 백엔드가 켜져 있는지 확인하세요.");
+      triggerError("서버 통신 에러가 발생했습니다. 백엔드가 작동 중인지 확인하세요.");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -407,6 +395,7 @@ export default function GamePage() {
     }
   };
 
+  // 게임 진행 내역 수동 리셋
   const handleResetGame = () => {
     if (confirm("현재 게임 기록을 초기화하시겠습니까?")) {
       setHistory([]);
@@ -418,6 +407,7 @@ export default function GamePage() {
     }
   };
 
+  // 선택 정렬 옵션에 따라 기록 목록 가공
   const getSortedHistory = () => {
     if (historySortOrder === "score") {
       return [...history].sort((a, b) => b.score - a.score);
@@ -427,6 +417,7 @@ export default function GamePage() {
     );
   };
 
+  // 점수대별 CSS 스타일링 지정
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-red-400 border-red-500/30 bg-red-950/20";
     if (score >= 70) return "text-orange-400 border-orange-500/20 bg-orange-950/10";
@@ -436,6 +427,7 @@ export default function GamePage() {
     return "text-slate-400 border-white/5";
   };
 
+  // 점수대별 불꽃 아이콘 활성화
   const getScoreIconColor = (score: number) => {
     if (score >= 70) return "text-red-500 fill-red-500/20 animate-pulse";
     if (score >= 50) return "text-orange-400";
@@ -448,23 +440,23 @@ export default function GamePage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-between p-4 md:p-8 max-w-5xl mx-auto z-10 relative">
       
-      {/* Fixed Background Glow Layer to prevent mobile horizontal scrollbar bugs */}
+      {/* 모바일 가로 스크롤 방지용 백그라운드 레이어 */}
       <div className="bg-glow-container">
         <div className="bg-glow-1" />
         <div className="bg-glow-2" />
       </div>
 
-      {/* Absolute Victory Confetti Overlay */}
+      {/* 정답 축하 콘페티 */}
       {isGameWon && <Confetti />}
 
-      {/* Glass Top Toast Alert Panel */}
+      {/* 상단 알림 토스트 */}
       <Toast 
         isOpen={isToastOpen} 
         message={toastMessage} 
         onClose={() => setIsToastOpen(false)} 
       />
 
-      {/* Top Header Section */}
+      {/* 헤더 */}
       <header className="w-full flex flex-col sm:flex-row items-center justify-between py-4 gap-4 sm:gap-2 border-b border-white/5 mb-6">
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <div className="p-2 rounded-2xl bg-white/5 border border-white/10 text-indigo-400 shadow-inner">
@@ -478,7 +470,7 @@ export default function GamePage() {
           </div>
         </div>
 
-        {/* Header Controls */}
+        {/* 설정 및 보조 기능 */}
         <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end">
           {globalBestScore > 0 && (
             <div 
@@ -516,13 +508,13 @@ export default function GamePage() {
         </div>
       </header>
 
-      {/* 레이아웃 그리드: 게임 및 실시간 클리어 현황 전광판을 위해 데스크톱에서 2개 열로 표시 */}
+      {/* 메인 화면 배치 */}
       <div className="w-full flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start my-auto py-2">
         
-        {/* 왼쪽/중앙 열: 게임 본문 */}
+        {/* 플레이어 조작 보드 */}
         <div className="lg:col-span-2 flex flex-col items-center justify-center relative w-full">
           
-          {/* 배경 네온 불빛 */}
+          {/* 분위기 연출용 네온 백그라운드 필터 */}
           <motion.div
             className="absolute -inset-6 rounded-3xl blur-3xl -z-10 transition-colors duration-700 pointer-events-none"
             animate={{
@@ -538,10 +530,10 @@ export default function GamePage() {
             transition={{ type: "spring", stiffness: 85, damping: 22 }}
           />
 
-          {/* 리퀴드 글래스 메인 패널 */}
+          {/* 메인 조작 패널 */}
           <div className="liquid-glass w-full rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col items-center relative overflow-hidden mb-6">
             
-            {/* 승리 레이어 */}
+            {/* 승리 팝업 오버레이 */}
             <AnimatePresence>
               {isGameWon && (
                 <motion.div
@@ -565,7 +557,7 @@ export default function GamePage() {
                   
                   <div className="flex flex-col items-center gap-4">
                     <p className="text-xs text-indigo-300/80 bg-indigo-950/20 border border-indigo-500/10 px-4 py-2 rounded-2xl">
-                      💡 관리자가 다음 정답 단어를 출제할 때까지 잠시 대기해 주세요.
+                      💡 다음 새로운 단어가 활성화될 때까지 잠시 기다려주세요.
                     </p>
                     
                     <div className="flex gap-2.5">
@@ -581,7 +573,7 @@ export default function GamePage() {
               )}
             </AnimatePresence>
 
-            {/* 현재 점수 화면 */}
+            {/* 현재 추측 결과 렌더링 */}
             <div className="w-full flex flex-col items-center mb-6 text-center">
               {currentGuess ? (
                 <motion.div
@@ -606,35 +598,35 @@ export default function GamePage() {
                     <div className="mt-1 flex flex-col items-center gap-3.5">
                       {currentGuess.score >= 90 ? (
                         <span className="px-3 py-1 rounded-full text-[9px] font-extrabold bg-red-950/40 border border-red-500/30 text-red-400 uppercase tracking-wider animate-pulse">
-                          정답 바로 코앞! (극도로 유사)
+                          정답이 코앞에 있습니다!
                         </span>
                       ) : currentGuess.score >= 70 ? (
                         <span className="px-3 py-1 rounded-full text-[9px] font-extrabold bg-orange-950/30 border border-orange-500/20 text-orange-400 uppercase tracking-wider">
-                          매우 뜨거움 (상위 순위권)
+                          매우 유사함 (근접 순위권)
                         </span>
                       ) : currentGuess.score >= 50 ? (
                         <span className="px-3 py-1 rounded-full text-[9px] font-semibold bg-amber-950/20 border border-amber-500/20 text-amber-400 uppercase tracking-wider">
-                          따뜻함 (상위 1000위 진입)
+                          따뜻함 (상위 1000위 이내)
                         </span>
                       ) : currentGuess.score >= 30 ? (
                         <span className="px-3 py-1 rounded-full text-[9px] font-semibold bg-yellow-950/10 border border-yellow-500/10 text-yellow-400 uppercase tracking-wider">
-                          미지근함 (연관 단어)
+                          약간 연관 있음
                         </span>
                       ) : (
                         <span className="px-3 py-1 rounded-full text-[9px] font-medium bg-white/5 border border-white/5 text-slate-500 uppercase tracking-wider">
-                          차가움 (연관 없음)
+                          연관성 없음
                         </span>
                       )}
                       
                       <div className="flex items-center gap-3 text-[10px] text-slate-400 font-semibold bg-white/5 px-3 py-1.5 rounded-2xl border border-white/5">
                         <div className="flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                          <span>내 최고 점수: <strong className="text-indigo-300 font-bold">{localBestScore}점</strong></span>
+                          <span>내 최고: <strong className="text-indigo-300 font-bold">{localBestScore}점</strong></span>
                         </div>
                         <div className="w-[1px] h-3 bg-white/10" />
                         <div className="flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
-                          <span>전체 최고 점수: <strong className="text-rose-300 font-bold">{globalBestScore}점</strong></span>
+                          <span>전체 최고: <strong className="text-rose-300 font-bold">{globalBestScore}점</strong></span>
                         </div>
                       </div>
                     </div>
@@ -643,14 +635,14 @@ export default function GamePage() {
               ) : (
                 <div className="py-6 flex flex-col items-center">
                   <Sparkles className="w-8 h-8 text-indigo-400/50 mb-3 animate-pulse" />
-                  <h3 className="text-slate-300 font-extrabold text-sm md:text-base">정답 단어를 유추해 보세요!</h3>
+                  <h3 className="text-slate-300 font-extrabold text-sm md:text-base">어떤 단어일지 유추해보세요!</h3>
                   <p className="text-xs text-slate-500 mt-1.5 max-w-[280px] leading-relaxed mb-4">
-                    하단 입력창에 어울리는 한국어 단어를 입력하고 유사도를 체크해 보세요.
+                    정답과 가장 가까운 단어를 적어보세요. 유사도가 높을수록 점수가 올라갑니다.
                   </p>
                   {globalBestScore > 0 && (
                     <div className="flex items-center gap-1 text-[10px] text-slate-400 font-semibold bg-rose-500/5 px-3 py-1.5 rounded-2xl border border-rose-500/10 text-rose-300">
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse shrink-0"></span>
-                      <span>현재 전체 최고 근접: <strong className="font-bold">{globalBestScore}점</strong></span>
+                      <span>전체 최고 근접 점수: <strong className="font-bold">{globalBestScore}점</strong></span>
                     </div>
                   )}
                 </div>
@@ -663,7 +655,7 @@ export default function GamePage() {
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder={isGameWon ? "축하합니다! 정답입니다." : "추측 단어 입력..."}
+                  placeholder={isGameWon ? "정답을 맞췄습니다." : "추측 단어 입력..."}
                   value={guessInput}
                   onChange={(e) => setGuessInput(e.target.value)}
                   disabled={isLoading || isGameWon}
@@ -684,16 +676,16 @@ export default function GamePage() {
             </form>
           </div>
 
-          {/* 하단 시도 기록 목록 */}
+          {/* 시도 기록 리스트 */}
           <div className="w-full flex flex-col mb-4 min-h-[220px]">
             <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-3">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
                   <ListFilter className="w-4 h-4 text-slate-500" />
-                  <h3 className="text-xs md:text-sm font-extrabold uppercase tracking-wider text-slate-400">시도 목록</h3>
+                  <h3 className="text-xs md:text-sm font-extrabold uppercase tracking-wider text-slate-400">내 시도 목록</h3>
                 </div>
                 
-                {/* 정렬 토글 */}
+                {/* 정렬 전환 탭 */}
                 <div className="flex items-center rounded-xl bg-white/5 border border-white/5 p-0.5 text-[10px] font-bold text-slate-400">
                   <button
                     onClick={() => setHistorySortOrder("score")}
@@ -719,7 +711,7 @@ export default function GamePage() {
               </div>
               
               <span className="text-[10px] text-slate-500 font-bold">
-                총 시도 횟수: <span className="text-slate-300 font-bold">{history.length}</span>
+                시도 횟수: <span className="text-slate-300 font-bold">{history.length}</span>
               </span>
             </div>
 
@@ -770,21 +762,21 @@ export default function GamePage() {
               </div>
             ) : (
               <div className="liquid-glass w-full rounded-2xl p-6 text-center text-xs text-slate-500 leading-relaxed">
-                아직 추측한 단어가 없습니다. <br />
-                첫 번째 추측 단어를 전송하여 게임을 개시하세요!
+                시도 기록이 없습니다. <br />
+                첫 단어를 입력하고 게임을 시작해보세요!
               </div>
             )}
           </div>
         </div>
 
-        {/* 오른쪽 열: 실시간 현황 (사이드바 스타일) */}
+        {/* 우측 실시간 피드 전광판 */}
         <div className="lg:col-span-1 w-full space-y-4">
           <ClearTicker />
         </div>
 
       </div>
 
-      {/* 모달 및 오버레이 */}
+      {/* 설명서 오버레이 모달 */}
       <TutorialModal
         isOpen={isTutorialOpen}
         onClose={() => setIsTutorialOpen(false)}

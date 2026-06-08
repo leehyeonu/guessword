@@ -1,9 +1,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { initializeFirestore, getFirestore, Firestore } from "firebase/firestore";
 
-// Firebase client configuration using Next.js client-safe environment variables.
-// Fallback mock credentials are provided so that the application compiles and launches
-// in "Offline Mode" when environment keys are not configured.
+// 환경변수가 없으면 오프라인 모드로 돌아가도록 mock 키 세팅
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "mock-api-key-value",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "mock-auth-domain.firebaseapp.com",
@@ -13,7 +11,7 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:123456789000:web:mockappid12345",
 };
 
-// SSR safety & Hot-reloading guard: checks if Firebase is already initialized.
+// Next.js SSR 대응 및 중복 초기화 방지
 const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 let db: Firestore;

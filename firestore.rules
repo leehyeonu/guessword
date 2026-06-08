@@ -1,51 +1,36 @@
-// ===============================================================
-// Assumed Data Model
-// ===============================================================
-//
-// This security rules file assumes the following data structures:
-//
-// Collection: clears
-// Document ID: auto-generated
-// Fields:
-//   - word: string (required, length 1-20) - The target word successfully guessed
-//   - attempts: number (required, positive integer) - Number of attempts taken to guess the word
-//   - timestamp: timestamp (required, recent) - Server timestamp when clear happened
-//
-// ===============================================================
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
+    // ==========================================
+    // 공통 검증 헬퍼 함수
+    // ==========================================
     
-    // Validate that the document contains all required fields
+    // 필수 필드 포함 확인
     function hasRequiredFields(fields) {
        return request.resource.data.keys().hasAll(fields);
     }
     
-    // Validate string length constraints
+    // 문자열 길이 범위 확인 (현재 미사용)
     function validStringLength(field, minLen, maxLen) {
        return request.resource.data[field] is string &&
          request.resource.data[field].size() >= minLen &&
          request.resource.data[field].size() <= maxLen;
     }
     
-    // Validate that a numeric value is a positive integer
+    // 0보다 큰 양수인지 확인
     function isPositiveNumber(field) {
       return request.resource.data[field] is number && request.resource.data[field] > 0;
     }
     
-    // Validate that the server timestamp is recent (within 5 minutes)
+    // 서버 시간 오차 검증 (5분 이내)
     function isRecent(time) {
       return time is timestamp &&
              time > request.time - duration.value(5, 'm') &&
              time <= request.time;
     }
     
-    // Domain Validator for game clears records
+    // 클리어 데이터 검증
     function isValidClear() {
       return hasRequiredFields(['gameId', 'attempts', 'timestamp']) &&
              request.resource.data.keys().hasOnly(['gameId', 'attempts', 'timestamp']) &&
@@ -55,7 +40,7 @@ service cloud.firestore {
              isRecent(request.resource.data.timestamp);
     }
 
-    // Domain Validator for closest guesses records
+    // 최고 근접 기록 검증
     function isValidClosestGuess() {
       return hasRequiredFields(['gameId', 'score', 'timestamp']) &&
              request.resource.data.keys().hasOnly(['gameId', 'score', 'timestamp']) &&
@@ -67,31 +52,31 @@ service cloud.firestore {
              isRecent(request.resource.data.timestamp);
     }
 
-    // clears collection rules
+    // clears 컬렉션 규칙
     match /clears/{clearId} {
-      // Allow anybody to read clears to show on the live scoreboard ticker
+      // 실시간 전광판용 읽기 허용
       allow read: if true;
       
-      // Allow anyone to record their score, provided they pass strict data validation
+      // 규격 검증 통과 시에만 기록 허용
       allow create: if isValidClear();
       
-      // Prevent editing or erasing clear records once written to ensure integrity
+      // 수정 및 삭제 불가
       allow update, delete: if false;
     }
 
-    // closest_guesses collection rules
+    // closest_guesses 컬렉션 규칙
     match /closest_guesses/{guessId} {
-      // Allow anybody to read closest guesses to show on the dynamic leaderboard
+      // 실시간 최고기록 전광판용 읽기 허용
       allow read: if true;
       
-      // Allow anyone to submit a close guess record with strict layout validation
+      // 규격 검증 통과 시 기록 허용
       allow create: if isValidClosestGuess();
       
-      // Prevent editing or erasing guess records
+      // 수정 및 삭제 불가
       allow update, delete: if false;
     }
 
-    // settings validator
+    // settings 검증 헬퍼 (현재 미사용)
     function isValidSetting() {
       return request.resource.data.keys().hasAll(['gameId', 'targetWordHash']) &&
              request.resource.data.gameId is string &&
@@ -100,12 +85,9 @@ service cloud.firestore {
              request.resource.data.targetWordHash.size() == 64;
     }
 
-    // settings collection rules
+    // settings 컬렉션 규칙 (백엔드 .env 단어 관리로 마이그레이션되어 쓰기 전면 차단)
     match /settings/{settingId} {
-      // Allow anybody to read settings to retrieve the game metadata
       allow read: if true;
-      
-      // Lock down write access to settings as it is now managed via backend .env and variables
       allow write: if false;
     }
   }

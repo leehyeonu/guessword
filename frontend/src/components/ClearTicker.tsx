@@ -53,7 +53,7 @@ export default function ClearTicker() {
         }
       );
     } catch (err: any) {
-      console.error("Firestore 구독 예외 발생:", err);
+      console.error("Firestore 연결 예외:", err);
       setErrorMsg("Firebase DB 초기화 실패. 환경 설정을 점검해 주세요.");
       setIsLoading(false);
     }
