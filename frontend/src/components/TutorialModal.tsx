@@ -79,7 +79,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                 <div>
                   <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-0.5">3. 붉은 빛이 들어오면 찬스!</h4>
                   <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                    정답과 밀접한 상위 1,000위 단어에 진입하는 순간 점수가 50점 위로 도약하고, 카드 뒤에서 붉은빛 오우라가 나옵니다.
+                    정답과 밀접한 상위 1,000위 단어에 진입하면 50점 이상을 받고, 75점 이상은 근접 순위권으로 평가됩니다.
                   </p>
                 </div>
               </div>

@@ -1,4 +1,6 @@
 import logging
+from difflib import SequenceMatcher
+
 import numpy as np
 import fasttext
 
@@ -23,6 +25,21 @@ class FastTextWrapper:
     def get_word_vector(self, word: str) -> np.ndarray:
         """단어의 300차원 벡터 추출"""
         return np.array(self.model.get_word_vector(word), dtype=np.float32)
+
+    def _get_textual_similarity_bonus(self, target_word: str, guess_word: str) -> float:
+        """부분 문자열, 공통 문자, 유사 문자열 구성 요소를 점수 보정에 반영"""
+        if not target_word or not guess_word:
+            return 0.0
+
+        if target_word in guess_word or guess_word in target_word:
+            return 0.15
+
+        sequence_ratio = SequenceMatcher(None, target_word, guess_word).ratio()
+        if sequence_ratio >= 0.35:
+            return 0.10
+        if sequence_ratio >= 0.20:
+            return 0.06
+        return 0.0
 
     def calculate_cosine_similarity(self, word1: str, word2: str) -> float:
         """두 단어 벡터 간 코사인 유사도 연산"""
@@ -70,26 +87,31 @@ class FastTextWrapper:
             return 1.0, 100.0
 
         cos_sim = self.calculate_cosine_similarity(target_word, guess_word)
+        text_bonus = self._get_textual_similarity_bonus(target_word, guess_word)
+        cos_sim = min(1.0, cos_sim + text_bonus)
         rank_map = self._get_or_cache_neighbors(target_word)
 
         if guess_word in rank_map:
-          	# 1구간: 1000위 이내 유사 단어
-            # 순위에 따라 50.0 ~ 100.0점 사이로 스케일링 (순위가 높을수록 지수적 상승)
+            # 1구간: 1000위 이내 유사 단어
+            # 순위에 따라 50.0 ~ 100.0점 사이로 스케일링
             rank = rank_map[guess_word]
             rank_ratio = (1001 - rank) / 1000.0
-            calibrated_score = 50.0 + 50.0 * (rank_ratio ** 2)
+            calibrated_score = 50.0 + 50.0 * (rank_ratio ** 1.25)
         else:
-          	# 2구간: 1000위 밖의 일반 단어
-            # 코사인 유사도 범위(보통 0.08 ~ 0.45)를 0.0 ~ 50.0점으로 매핑
-            min_sim = 0.08
-            max_sim = 0.45
+            # 2구간: 1000위 밖의 일반 단어
+            # 코사인 유사도 범위(보통 0.02 ~ 0.55)를 0.0 ~ 50.0점으로 매핑
+            min_sim = 0.02
+            max_sim = 0.55
             if cos_sim <= min_sim:
                 calibrated_score = 0.0
             else:
-                # 1.5차 스케일링을 통해 변별력 개선
                 normalized = (cos_sim - min_sim) / (max_sim - min_sim)
                 normalized = min(1.0, max(0.0, normalized))
-                calibrated_score = 50.0 * (normalized ** 1.5)
+                calibrated_score = 50.0 * (normalized ** 1.4)
+
+            # 정답 단어와 부분적으로 겹치는 경우, 최소 점수를 보장
+            if target_word in guess_word or guess_word in target_word:
+                calibrated_score = max(calibrated_score, 30.0)
 
         # 0.0 ~ 100.0 범위 클리핑
         calibrated_score = max(0.0, min(100.0, calibrated_score))

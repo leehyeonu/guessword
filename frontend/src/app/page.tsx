@@ -501,19 +501,28 @@ export default function GamePage() {
   // 점수대별 CSS 스타일링 지정 (Apple System Color 가이드 준수)
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-red-650 dark:text-red-400 border-red-500/20 bg-red-500/5 dark:bg-red-500/10";
-    if (score >= 70) return "text-orange-650 dark:text-orange-400 border-orange-500/20 bg-orange-500/5 dark:bg-orange-500/10";
-    if (score >= 50) return "text-amber-650 dark:text-amber-400 border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/10";
-    if (score >= 30) return "text-blue-650 dark:text-blue-400 border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/10";
-    if (score >= 10) return "text-zinc-650 dark:text-zinc-400 border-zinc-500/20 bg-zinc-500/5 dark:bg-zinc-500/10";
+    if (score >= 75) return "text-orange-650 dark:text-orange-400 border-orange-500/20 bg-orange-500/5 dark:bg-orange-500/10";
+    if (score >= 55) return "text-amber-650 dark:text-amber-400 border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/10";
+    if (score >= 35) return "text-blue-650 dark:text-blue-400 border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/10";
+    if (score >= 15) return "text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700/60 bg-slate-400/10 dark:bg-slate-500/10";
     return "text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/5";
   };
 
   // 점수대별 불꽃 아이콘 활성화
   const getScoreIconColor = (score: number) => {
-    if (score >= 70) return "text-red-500 dark:text-red-400 fill-red-500/10 animate-pulse";
-    if (score >= 50) return "text-orange-500 dark:text-orange-400";
-    if (score >= 30) return "text-blue-500 dark:text-blue-400";
+    if (score >= 75) return "text-red-500 dark:text-red-400 fill-red-500/10 animate-pulse";
+    if (score >= 55) return "text-orange-500 dark:text-orange-400";
+    if (score >= 35) return "text-blue-500 dark:text-blue-400";
     return "text-slate-400 dark:text-slate-500";
+  };
+
+  const getScoreLabel = (score: number) => {
+    if (score >= 90) return "정답이 코앞에 있습니다!";
+    if (score >= 75) return "매우 유사함 (근접 순위권)";
+    if (score >= 55) return "따뜻함 (상위 1000위 이내)";
+    if (score >= 35) return "약간 연관 있음";
+    if (score >= 15) return "연관성 낮음";
+    return "연관성 없음";
   };
 
   const activeScore = currentGuess ? currentGuess.score : 0;
@@ -646,27 +655,26 @@ export default function GamePage() {
                     </div>
                     
                     <div className="mt-2.5 flex flex-col items-center gap-3">
-                      {currentGuess.score >= 90 ? (
-                        <span className="px-3 py-1 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-650 dark:bg-red-500/15 dark:text-red-400 uppercase tracking-normal animate-pulse">
-                          정답이 코앞에 있습니다!
-                        </span>
-                      ) : currentGuess.score >= 70 ? (
-                        <span className="px-3 py-1 rounded-lg text-[10px] font-bold bg-orange-500/10 text-orange-650 dark:bg-orange-500/15 dark:text-orange-400 uppercase tracking-normal">
-                          매우 유사함 (근접 순위권)
-                        </span>
-                      ) : currentGuess.score >= 50 ? (
-                        <span className="px-3 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/10 text-amber-650 dark:bg-amber-500/15 dark:text-amber-400 uppercase tracking-normal">
-                          따뜻함 (상위 1000위 이내)
-                        </span>
-                      ) : currentGuess.score >= 30 ? (
-                        <span className="px-3 py-1 rounded-lg text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 uppercase tracking-normal">
-                          약간 연관 있음
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 rounded-lg text-[10px] font-medium bg-slate-500/10 text-slate-650 dark:bg-slate-500/15 dark:text-slate-400 uppercase tracking-normal">
-                          연관성 없음
-                        </span>
-                      )}
+                      <span className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-normal"
+                        style={{
+                          backgroundColor:
+                            currentGuess.score >= 90 ? "rgba(239,68,68,0.1)" :
+                            currentGuess.score >= 75 ? "rgba(249,115,22,0.1)" :
+                            currentGuess.score >= 55 ? "rgba(245,158,11,0.1)" :
+                            currentGuess.score >= 35 ? "rgba(59,130,246,0.1)" :
+                            currentGuess.score >= 15 ? "rgba(148,163,184,0.12)" :
+                            "rgba(148,163,184,0.08)",
+                          color:
+                            currentGuess.score >= 90 ? "#b91c1c" :
+                            currentGuess.score >= 75 ? "#c2410c" :
+                            currentGuess.score >= 55 ? "#b45309" :
+                            currentGuess.score >= 35 ? "#2563eb" :
+                            currentGuess.score >= 15 ? "#475569" :
+                            "#475569",
+                        }}
+                      >
+                        {getScoreLabel(currentGuess.score)}
+                      </span>
                       
                       <div className="w-full max-w-[320px] flex flex-col sm:flex-row sm:items-center sm:justify-center gap-1.5 sm:gap-3 text-[10px] text-slate-650 dark:text-slate-350 font-semibold bg-[var(--apple-gray-btn)] px-3 py-2 sm:py-1.5 rounded-lg">
                         <div className="flex items-center justify-center gap-1 whitespace-nowrap">
