@@ -44,6 +44,9 @@ export default function GamePage() {
   const [localBestScore, setLocalBestScore] = useState(0);
   const [globalBestScore, setGlobalBestScore] = useState(0);
 
+  // 정렬 필터 상태 ("score" = 점수순, "time" = 최신순)
+  const [historySortOrder, setHistorySortOrder] = useState<"score" | "time">("score");
+
   // UI 및 오버레이 상태
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -373,7 +376,14 @@ export default function GamePage() {
     }
   };
 
-  const sortedHistory = [...history].sort((a, b) => b.score - a.score);
+  const getSortedHistory = () => {
+    if (historySortOrder === "score") {
+      return [...history].sort((a, b) => b.score - a.score);
+    }
+    return [...history].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  };
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-red-400 border-red-500/30 bg-red-950/20";
@@ -635,10 +645,37 @@ export default function GamePage() {
           {/* 하단 시도 기록 목록 */}
           <div className="w-full flex flex-col mb-4 min-h-[220px]">
             <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-3">
-              <div className="flex items-center gap-1.5">
-                <ListFilter className="w-4 h-4 text-slate-500" />
-                <h3 className="text-xs md:text-sm font-extrabold uppercase tracking-wider text-slate-400">시도 목록</h3>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <ListFilter className="w-4 h-4 text-slate-500" />
+                  <h3 className="text-xs md:text-sm font-extrabold uppercase tracking-wider text-slate-400">시도 목록</h3>
+                </div>
+                
+                {/* 정렬 토글 */}
+                <div className="flex items-center rounded-xl bg-white/5 border border-white/5 p-0.5 text-[10px] font-bold text-slate-400">
+                  <button
+                    onClick={() => setHistorySortOrder("score")}
+                    className={`px-2 py-1 rounded-lg cursor-pointer transition ${
+                      historySortOrder === "score" 
+                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/10" 
+                        : "hover:text-slate-200"
+                    }`}
+                  >
+                    점수순
+                  </button>
+                  <button
+                    onClick={() => setHistorySortOrder("time")}
+                    className={`px-2 py-1 rounded-lg cursor-pointer transition ${
+                      historySortOrder === "time" 
+                        ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/10" 
+                        : "hover:text-slate-200"
+                    }`}
+                  >
+                    최신순
+                  </button>
+                </div>
               </div>
+              
               <span className="text-[10px] text-slate-500 font-bold">
                 총 시도 횟수: <span className="text-slate-300 font-bold">{history.length}</span>
               </span>
@@ -647,7 +684,7 @@ export default function GamePage() {
             {history.length > 0 ? (
               <div className="w-full max-h-[260px] overflow-y-auto pr-1 space-y-2.5">
                 <AnimatePresence initial={false}>
-                  {sortedHistory.map((item) => {
+                  {getSortedHistory().map((item) => {
                     const tryNumber = history.findIndex((h) => h.word === item.word) + 1;
                     return (
                       <motion.div

@@ -94,9 +94,15 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # 프론트엔드 웹 연동을 위한 CORS 구성
+cors_origins_raw = os.getenv("CORS_ORIGINS", "*").strip()
+if cors_origins_raw == "*":
+    allow_origins = ["*"]
+else:
+    allow_origins = [origin.strip() for origin in cors_origins_raw.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 프로덕션 환경에 맞게 조정하세요
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
