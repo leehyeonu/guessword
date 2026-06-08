@@ -11,6 +11,7 @@ interface ClearItem {
   gameId: string;
   attempts: number;
   timestamp: Date;
+  nickname: string;
 }
 
 export default function ClearTicker() {
@@ -39,6 +40,7 @@ export default function ClearTicker() {
               gameId: data.gameId || "",
               attempts: data.attempts || 0,
               timestamp: data.timestamp?.toDate() || new Date(),
+              nickname: data.nickname || "누군가",
             });
           });
 
@@ -103,7 +105,7 @@ export default function ClearTicker() {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <Zap className="w-3.5 h-3.5 text-[var(--apple-blue)] shrink-0" />
                   <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
-                    누군가 <span className="text-[var(--apple-blue)] font-bold">정답</span>을 맞췄습니다!
+                    <span className="text-slate-900 dark:text-white font-bold">{clear.nickname}</span>님이 <span className="text-[var(--apple-blue)] font-bold">정답</span>을 맞췄습니다!
                   </span>
                 </div>
                 

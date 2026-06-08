@@ -25,47 +25,77 @@ service cloud.firestore {
     
     // 클리어 데이터 검증
     function isValidClear() {
-      return hasRequiredFields(['gameId', 'attempts', 'timestamp']) &&
-             request.resource.data.keys().hasOnly(['gameId', 'attempts', 'timestamp']) &&
+      return hasRequiredFields(['gameId', 'attempts', 'timestamp', 'nickname', 'ip', 'device']) &&
+             request.resource.data.keys().hasOnly(['gameId', 'attempts', 'timestamp', 'nickname', 'ip', 'device']) &&
              request.resource.data.gameId is string &&
              request.resource.data.gameId.size() == 64 &&
              isPositiveNumber('attempts') &&
+             request.resource.data.nickname is string &&
+             request.resource.data.nickname.size() <= 20 &&
+             request.resource.data.ip is string &&
+             request.resource.data.ip.size() <= 45 &&
+             request.resource.data.device is string &&
+             request.resource.data.device.size() <= 250 &&
              isRecent(request.resource.data.timestamp);
     }
 
     // 최고 근접 기록 검증
     function isValidClosestGuess() {
-      return hasRequiredFields(['gameId', 'score', 'timestamp']) &&
-             request.resource.data.keys().hasOnly(['gameId', 'score', 'timestamp']) &&
+      return hasRequiredFields(['gameId', 'score', 'timestamp', 'nickname', 'ip', 'device']) &&
+             request.resource.data.keys().hasOnly(['gameId', 'score', 'timestamp', 'nickname', 'ip', 'device']) &&
              request.resource.data.gameId is string &&
              request.resource.data.gameId.size() == 64 &&
              request.resource.data.score is number &&
              request.resource.data.score >= 0 &&
              request.resource.data.score <= 100 &&
+             request.resource.data.nickname is string &&
+             request.resource.data.nickname.size() <= 20 &&
+             request.resource.data.ip is string &&
+             request.resource.data.ip.size() <= 45 &&
+             request.resource.data.device is string &&
+             request.resource.data.device.size() <= 250 &&
+             isRecent(request.resource.data.timestamp);
+    }
+
+    // 개별 시도 기록 검증
+    function isValidAttempt() {
+      return hasRequiredFields(['gameId', 'nickname', 'word', 'similarity', 'score', 'timestamp', 'ip', 'device']) &&
+             request.resource.data.keys().hasOnly(['gameId', 'nickname', 'word', 'similarity', 'score', 'timestamp', 'ip', 'device']) &&
+             request.resource.data.gameId is string &&
+             request.resource.data.gameId.size() == 64 &&
+             request.resource.data.nickname is string &&
+             request.resource.data.nickname.size() <= 20 &&
+             request.resource.data.word is string &&
+             request.resource.data.word.size() <= 30 &&
+             request.resource.data.similarity is number &&
+             request.resource.data.score is number &&
+             request.resource.data.score >= 0 &&
+             request.resource.data.score <= 100 &&
+             request.resource.data.ip is string &&
+             request.resource.data.ip.size() <= 45 &&
+             request.resource.data.device is string &&
+             request.resource.data.device.size() <= 250 &&
              isRecent(request.resource.data.timestamp);
     }
 
     // clears 컬렉션 규칙
     match /clears/{clearId} {
-      // 실시간 전광판용 읽기 허용
       allow read: if true;
-      
-      // 규격 검증 통과 시에만 기록 허용
       allow create: if isValidClear();
-      
-      // 수정 및 삭제 불가
       allow update, delete: if false;
     }
 
     // closest_guesses 컬렉션 규칙
     match /closest_guesses/{guessId} {
-      // 실시간 최고기록 전광판용 읽기 허용
       allow read: if true;
-      
-      // 규격 검증 통과 시 기록 허용
       allow create: if isValidClosestGuess();
-      
-      // 수정 및 삭제 불가
+      allow update, delete: if false;
+    }
+
+    // attempts 컬렉션 규칙
+    match /attempts/{attemptId} {
+      allow read: if true;
+      allow create: if isValidAttempt();
       allow update, delete: if false;
     }
 

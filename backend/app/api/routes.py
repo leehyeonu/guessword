@@ -21,6 +21,8 @@ class GuessResponse(BaseModel):
     is_correct: bool = Field(..., description="정답 여부")
     target_word: str = Field(..., description="정답 단어 (맞췄을 때만 채워지고 평소엔 빈값)")
     game_id: str = Field(..., description="현재 정답의 SHA-256 해시값")
+    client_ip: str = Field(..., description="요청한 클라이언트 IP")
+    user_agent: str = Field(..., description="요청한 클라이언트 User-Agent")
 
 class GameInfoResponse(BaseModel):
     game_id: str = Field(..., description="현재 정답의 SHA-256 해시값")
@@ -87,13 +89,27 @@ def guess(request: Request, body: GuessRequest):
     is_correct = (target == guess)
     game_id = get_game_id(target)
 
+    # IP 및 User-Agent 추출
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    x_real_ip = request.headers.get("x-real-ip")
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(",")[0].strip()
+    elif x_real_ip:
+        client_ip = x_real_ip.strip()
+    else:
+        client_ip = request.client.host if request.client else "unknown"
+
+    user_agent = request.headers.get("user-agent", "unknown")
+
     return GuessResponse(
         guess_word=guess,
         similarity=similarity,
         score=score,
         is_correct=is_correct,
         target_word=target if is_correct else "",
-        game_id=game_id
+        game_id=game_id,
+        client_ip=client_ip,
+        user_agent=user_agent
     )
 
 

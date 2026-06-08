@@ -41,6 +41,9 @@ export default function GamePage() {
   const [history, setHistory] = useState<GuessHistoryItem[]>([]);
   const [currentGuess, setCurrentGuess] = useState<GuessHistoryItem | null>(null);
   
+  // 익명 닉네임 상태 (localStorage 유지)
+  const [nickname, setNickname] = useState("");
+  
   // 최고 기록
   const [localBestScore, setLocalBestScore] = useState(0);
   const [globalBestScore, setGlobalBestScore] = useState(0);
@@ -104,6 +107,19 @@ export default function GamePage() {
 
   // 최초 로드 시 설정 복구 및 서버 세션 체크
   useEffect(() => {
+    // 익명 닉네임 로드 또는 생성
+    let savedNickname = localStorage.getItem("guessword_nickname");
+    if (!savedNickname) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let randomStr = "";
+      for (let i = 0; i < 4; i++) {
+        randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      savedNickname = `익명#${randomStr}`;
+      localStorage.setItem("guessword_nickname", savedNickname);
+    }
+    setNickname(savedNickname);
+
     // 튜토리얼 아직 안 봤으면 띄워주기
     const seenTutorial = localStorage.getItem("guessword_tutorial_seen");
     if (!seenTutorial) {
@@ -291,12 +307,21 @@ export default function GamePage() {
   };
 
   // 최고 근접 기록 저장
-  const logClosestGuessToFirestore = async (currentGameId: string, currentScore: number) => {
+  const logClosestGuessToFirestore = async (
+    currentGameId: string,
+    currentScore: number,
+    userNick: string,
+    userIp: string,
+    userDevice: string
+  ) => {
     try {
       await addDoc(collection(db, "closest_guesses"), {
         gameId: currentGameId,
         score: currentScore,
         timestamp: serverTimestamp(),
+        nickname: userNick,
+        ip: userIp,
+        device: userDevice,
       });
     } catch (err) {
       console.warn("기록 저장 실패 (네트워크 혹은 파이어베이스 키 확인 필요):", err);
@@ -304,12 +329,21 @@ export default function GamePage() {
   };
 
   // 게임 클리어 기록 저장
-  const logClearToFirestore = async (currentGameId: string, totalAttempts: number) => {
+  const logClearToFirestore = async (
+    currentGameId: string,
+    totalAttempts: number,
+    userNick: string,
+    userIp: string,
+    userDevice: string
+  ) => {
     try {
       await addDoc(collection(db, "clears"), {
         gameId: currentGameId,
         attempts: totalAttempts,
         timestamp: serverTimestamp(),
+        nickname: userNick,
+        ip: userIp,
+        device: userDevice,
       });
     } catch (err) {
       console.warn("클리어 로그 저장 실패:", err);
@@ -403,6 +437,25 @@ export default function GamePage() {
 
       playChime(newGuess.score);
 
+      const clientIp = data.client_ip || "unknown";
+      const userAgent = data.user_agent || "unknown";
+
+      // 1. 모든 시도 기록 Firebase 'attempts' 컬렉션에 전송 (IP, 기기 정보 포함)
+      try {
+        await addDoc(collection(db, "attempts"), {
+          gameId: data.game_id,
+          nickname: nickname,
+          word: data.guess_word,
+          similarity: data.similarity,
+          score: data.score,
+          timestamp: serverTimestamp(),
+          ip: clientIp,
+          device: userAgent,
+        });
+      } catch (err) {
+        console.warn("Firestore attempts 기록 실패:", err);
+      }
+
       if (data.is_correct) {
         setIsGameWon(true);
         setTargetWord(data.target_word);
@@ -413,13 +466,13 @@ export default function GamePage() {
           navigator.vibrate([100, 50, 100]);
         }
 
-        await logClearToFirestore(data.game_id, updatedHistory.length);
+        await logClearToFirestore(data.game_id, updatedHistory.length, nickname, clientIp, userAgent);
       } else {
         const score = data.score;
         if (score >= 10 && score > localBestScore) {
           setLocalBestScore(score);
           localStorage.setItem(`guessword_best_score_${gameId}`, score.toString());
-          await logClosestGuessToFirestore(data.game_id, score);
+          await logClosestGuessToFirestore(data.game_id, score, nickname, clientIp, userAgent);
           if (score > globalBestScore) {
             setGlobalBestScore(score);
           }
@@ -493,10 +546,15 @@ export default function GamePage() {
 
       {/* 헤더 (Apple-style Clean Header) */}
       <header className="w-full flex flex-col sm:flex-row items-center justify-between py-3.5 gap-4 sm:gap-2 border-b border-slate-200/60 dark:border-zinc-800/80 mb-6">
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <h1 className="font-bold text-lg md:text-xl tracking-tight text-slate-900 dark:text-white">
             GUESSKOREAN
           </h1>
+          {nickname && (
+            <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--apple-gray-btn)] text-slate-650 dark:text-slate-350 shrink-0">
+              {nickname}
+            </span>
+          )}
         </div>
 
         {/* 설정 및 보조 기능 */}
