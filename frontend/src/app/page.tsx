@@ -381,6 +381,12 @@ export default function GamePage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-between p-4 md:p-8 max-w-5xl mx-auto z-10 relative">
       
+      {/* Fixed Background Glow Layer to prevent mobile horizontal scrollbar bugs */}
+      <div className="bg-glow-container">
+        <div className="bg-glow-1" />
+        <div className="bg-glow-2" />
+      </div>
+
       {/* Absolute Victory Confetti Overlay */}
       {isGameWon && <Confetti />}
 
@@ -392,8 +398,8 @@ export default function GamePage() {
       />
 
       {/* Top Header Section */}
-      <header className="w-full flex items-center justify-between py-4 border-b border-white/5 mb-6">
-        <div className="flex items-center gap-2">
+      <header className="w-full flex flex-col sm:flex-row items-center justify-between py-4 gap-4 sm:gap-2 border-b border-white/5 mb-6">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <div className="p-2 rounded-2xl bg-white/5 border border-white/10 text-indigo-400 shadow-inner">
             <Flame className="w-6 h-6 animate-pulse text-indigo-400" />
           </div>
@@ -406,7 +412,7 @@ export default function GamePage() {
         </div>
 
         {/* Header Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end">
           {globalBestScore > 0 && (
             <div 
               className="flex items-center gap-1 px-2.5 py-2 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-[11px] font-bold text-rose-300 shadow-inner"
@@ -466,7 +472,7 @@ export default function GamePage() {
           />
 
           {/* 리퀴드 글래스 메인 패널 */}
-          <div className="liquid-glass w-full rounded-3xl p-6 md:p-8 flex flex-col items-center relative overflow-hidden mb-6">
+          <div className="liquid-glass w-full rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col items-center relative overflow-hidden mb-6">
             
             {/* 승리 레이어 */}
             <AnimatePresence>
@@ -519,15 +525,15 @@ export default function GamePage() {
                 >
                   <span className="text-[10px] text-slate-500 tracking-wider font-extrabold uppercase">최근 입력 단어</span>
                   <div className="flex items-center justify-center gap-2 my-1.5">
-                    <h2 className="text-3xl font-black text-slate-100 tracking-tight">{currentGuess.word}</h2>
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-100 tracking-tight truncate max-w-[200px] sm:max-w-none">{currentGuess.word}</h2>
                     <Flame className={`w-6 h-6 ${getScoreIconColor(currentGuess.score)}`} />
                   </div>
                   
                   <div className="mt-3 flex flex-col items-center justify-center">
                     <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">유사도 점수</span>
-                    <div className="text-5xl font-black font-mono tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-slate-100 to-slate-400 my-0.5">
+                    <div className="text-4xl sm:text-5xl font-black font-mono tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-slate-100 to-slate-400 my-0.5">
                       {currentGuess.score}
-                      <span className="text-lg font-bold ml-0.5 text-slate-400">/ 100</span>
+                      <span className="text-base sm:text-lg font-bold ml-0.5 text-slate-400">/ 100</span>
                     </div>
                     
                     <div className="mt-1 flex flex-col items-center gap-3.5">
@@ -593,7 +599,7 @@ export default function GamePage() {
                   value={guessInput}
                   onChange={(e) => setGuessInput(e.target.value)}
                   disabled={isLoading || isGameWon}
-                  className="liquid-glass liquid-glass-interactive w-full pl-5 pr-14 py-3.5 rounded-2xl text-slate-100 placeholder-slate-500 focus:placeholder-slate-400 outline-none text-sm md:text-base disabled:opacity-50"
+                  className="liquid-glass liquid-glass-interactive w-full pl-4 sm:pl-5 pr-12 sm:pr-14 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-slate-100 placeholder-slate-500 focus:placeholder-slate-400 outline-none text-xs sm:text-sm md:text-base disabled:opacity-50"
                 />
                 <button
                   type="submit"
@@ -641,7 +647,7 @@ export default function GamePage() {
                           <span className="text-[10px] text-slate-500 font-bold font-mono bg-white/5 border border-white/5 w-6 h-6 rounded-lg flex items-center justify-center">
                             #{tryNumber}
                           </span>
-                          <span className="font-bold text-slate-100 text-sm md:text-base tracking-wide">
+                          <span className="font-bold text-slate-100 text-xs sm:text-sm md:text-base tracking-wide truncate max-w-[100px] sm:max-w-none">
                             {item.word}
                           </span>
                         </div>

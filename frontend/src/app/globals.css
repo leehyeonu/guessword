@@ -14,32 +14,49 @@ body {
   position: relative;
 }
 
-/* Premium Animated Liquid Background */
-body::before,
-body::after {
-  content: "";
+/* Premium Animated Liquid Background Containers */
+.bg-glow-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: -20;
+  pointer-events: none;
+}
+
+.bg-glow-1,
+.bg-glow-2 {
   position: absolute;
   width: 600px;
   height: 600px;
   border-radius: 50%;
   filter: blur(140px);
-  z-index: -20;
-  opacity: 0.15;
-  pointer-events: none;
+  opacity: 0.12;
 }
 
-body::before {
+.bg-glow-1 {
   background: radial-gradient(circle, rgba(99, 102, 241, 0.8) 0%, rgba(168, 85, 247, 0.4) 100%);
   top: -10%;
   left: -10%;
   animation: float-bg-1 25s infinite alternate ease-in-out;
 }
 
-body::after {
+.bg-glow-2 {
   background: radial-gradient(circle, rgba(236, 72, 153, 0.6) 0%, rgba(59, 130, 246, 0.4) 100%);
   bottom: -10%;
   right: -10%;
   animation: float-bg-2 30s infinite alternate ease-in-out;
+}
+
+@media (max-width: 768px) {
+  .bg-glow-1,
+  .bg-glow-2 {
+    width: 300px;
+    height: 300px;
+    filter: blur(80px);
+  }
 }
 
 @keyframes float-bg-1 {

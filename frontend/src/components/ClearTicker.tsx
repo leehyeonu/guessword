@@ -98,20 +98,20 @@ export default function ClearTicker() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-white/5 border border-white/5"
+                className="flex items-center justify-between text-[11px] sm:text-xs p-2 sm:p-2.5 rounded-xl bg-white/5 border border-white/5"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <Zap className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                  <span className="font-semibold text-slate-300">
+                  <span className="font-semibold text-slate-300 truncate">
                     누군가 <span className="text-indigo-400 font-bold">정답</span>을 맞췄습니다!
                   </span>
                 </div>
                 
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[10px] text-slate-400 font-mono bg-indigo-500/10 px-1.5 py-0.5 rounded-md text-indigo-300 font-bold">
-                    {clear.attempts}회 시도
+                <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                  <span className="text-[9px] sm:text-[10px] text-slate-400 font-mono bg-indigo-500/10 px-1.5 py-0.5 rounded-md text-indigo-300 font-bold">
+                    {clear.attempts}회
                   </span>
-                  <span className="text-[9px] text-slate-500 min-w-[38px] text-right">
+                  <span className="text-[8px] sm:text-[9px] text-slate-500 min-w-[34px] text-right">
                     {formatTimeAgo(clear.timestamp)}
                   </span>
                 </div>
