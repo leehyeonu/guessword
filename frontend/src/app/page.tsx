@@ -21,6 +21,7 @@ import TutorialModal from "@/components/TutorialModal";
 import Toast from "@/components/Toast";
 import Confetti from "@/components/Confetti";
 import ClearTicker from "@/components/ClearTicker";
+import AttemptTicker from "@/components/AttemptTicker";
 
 interface GuessHistoryItem {
   word: string;
@@ -869,6 +870,7 @@ export default function GamePage() {
 
         {/* 우측 실시간 피드 전광판 */}
         <div className="lg:col-span-1 w-full space-y-4">
+          <AttemptTicker userNickname={nickname} />
           <ClearTicker userNickname={nickname} />
         </div>
 

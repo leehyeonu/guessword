@@ -42,9 +42,16 @@ class ClearItem(BaseModel):
     timestamp: str
     nickname: str
 
+class AttemptItem(BaseModel):
+    id: str
+    nickname: str
+    score: float
+    timestamp: str
+
 class GameStatsResponse(BaseModel):
     global_best_score: float
     recent_clears: list[ClearItem]
+    recent_attempts: list[AttemptItem]
 
 
 def get_game_id(target_word: str) -> str:
@@ -91,11 +98,12 @@ def get_game_stats(request: Request, game_id: str | None = None, limit: int = 5)
     store = getattr(request.app.state, "firestore_store", None)
 
     if store is None:
-        return GameStatsResponse(global_best_score=0, recent_clears=[])
+        return GameStatsResponse(global_best_score=0, recent_clears=[], recent_attempts=[])
 
     return GameStatsResponse(
         global_best_score=store.get_global_best_score(current_game_id),
         recent_clears=store.get_recent_clears(limit),
+        recent_attempts=store.get_recent_attempts(10),
     )
 
 

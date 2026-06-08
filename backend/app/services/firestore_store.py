@@ -201,6 +201,38 @@ class FirestoreStore:
             "nickname": data.get("nickname", "누군가"),
         }
 
+    def get_recent_attempts(self, limit: int = 10) -> list[dict[str, Any]]:
+        """최근 시도 기록 조회 (민감 정보 제외: 단어, IP, device 미반환)"""
+        if not self.enabled:
+            return []
+
+        try:
+            docs = (
+                self.client.collection("attempts")
+                .order_by("timestamp", direction=self.firestore.Query.DESCENDING)
+                .limit(max(1, min(limit, 20)))
+                .stream()
+            )
+            return [self._serialize_attempt(doc.id, doc.to_dict()) for doc in docs]
+        except Exception as exc:
+            logger.warning("Firestore 시도 기록 조회 실패: %s", exc)
+            return []
+
+    def _serialize_attempt(self, doc_id: str, data: dict[str, Any]) -> dict[str, Any]:
+        """시도 기록 직렬화 — 닉네임, 점수, 시간만 노출"""
+        timestamp = data.get("timestamp")
+        if hasattr(timestamp, "isoformat"):
+            timestamp_value = timestamp.isoformat()
+        else:
+            timestamp_value = datetime.now(timezone.utc).isoformat()
+
+        return {
+            "id": doc_id,
+            "nickname": data.get("nickname", "누군가"),
+            "score": float(data.get("score", 0) or 0),
+            "timestamp": timestamp_value,
+        }
+
     def _safe_string(self, value: str, fallback: str, max_length: int) -> str:
         cleaned = (value or fallback).strip().replace("/", "_")
         if not cleaned:
