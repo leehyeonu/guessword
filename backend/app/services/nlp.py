@@ -81,27 +81,34 @@ class FastTextWrapper:
         return rank_map
 
     def calculate_score(self, target_word: str, guess_word: str) -> tuple[float, float]:
-        """두 단어의 코사인 유사도와 0~100 사이의 게임 보정 점수 계산"""
-        # 완전 일치 시 100점 즉시 반환
+        """두 단어의 코사인 유사도와 연속적인 0~100 사이의 게임 보정 점수 계산"""
         if guess_word == target_word:
             return 1.0, 100.0
 
+        # 1. 순수 코사인 유사도 계산 (보너스 더하기 전)
         cos_sim = self.calculate_cosine_similarity(target_word, guess_word)
-        text_bonus = self._get_textual_similarity_bonus(target_word, guess_word)
-        cos_sim = min(1.0, cos_sim + text_bonus)
         rank_map = self._get_or_cache_neighbors(target_word)
 
+        calibrated_score = 0.0
+
         if guess_word in rank_map:
-            # 1구간: 1000위 이내 유사 단어
-            # 순위에 따라 50.0 ~ 100.0점 사이로 스케일링
+            # [1구간] 1000위 이내: 순위 기반 스케일링 (50 ~ 100점)
             rank = rank_map[guess_word]
             rank_ratio = (1001 - rank) / 1000.0
             calibrated_score = 50.0 + 50.0 * (rank_ratio ** 1.25)
         else:
-            # 2구간: 1000위 밖의 일반 단어
-            # 코사인 유사도 범위(보통 0.02 ~ 0.55)를 0.0 ~ 50.0점으로 매핑
+            # [2구간] 1000위 밖: 유사도 기반 스케일링 (0 ~ 50점)
+            # 핵심 수정: 하드코딩된 max_sim 대신, 1000등 단어의 유사도를 기준으로 삼음
+            # (만약 1000등 단어가 없다면 임의의 기본값 0.35 사용)
+            rank_1000_sim = 0.35 
+            if len(rank_map) == 1000:
+                # rank_map에서 1000등 단어 찾기
+                word_1000 = list(rank_map.keys())[list(rank_map.values()).index(1000)]
+                rank_1000_sim = self.calculate_cosine_similarity(target_word, word_1000)
+
             min_sim = 0.02
-            max_sim = 0.55
+            max_sim = rank_1000_sim # 절벽을 없애기 위해 1000등의 유사도를 상한선으로 설정
+
             if cos_sim <= min_sim:
                 calibrated_score = 0.0
             else:
@@ -109,11 +116,20 @@ class FastTextWrapper:
                 normalized = min(1.0, max(0.0, normalized))
                 calibrated_score = 50.0 * (normalized ** 1.4)
 
-            # 정답 단어와 부분적으로 겹치는 경우, 최소 점수를 보장
-            if target_word in guess_word or guess_word in target_word:
-                calibrated_score = max(calibrated_score, 30.0)
+        # 2. 텍스트 형태소 보너스는 마지막 '최종 점수'에 가산 (최대 15점)
+        text_bonus = self._get_textual_similarity_bonus(target_word, guess_word)
+        # _get_textual_similarity_bonus 가 0.0 ~ 0.15 를 반환한다고 가정할 때, 이를 0~15점으로 환산
+        score_bonus = text_bonus * 100 
+        calibrated_score += score_bonus
+
+        # 정답 단어와 부분적으로 겹치는 경우, 최소 점수 보장 (보너스 적용 후 처리)
+        if target_word in guess_word or guess_word in target_word:
+            calibrated_score = max(calibrated_score, 30.0)
 
         # 0.0 ~ 100.0 범위 클리핑
         calibrated_score = max(0.0, min(100.0, calibrated_score))
         
-        return cos_sim, round(calibrated_score, 2)
+        # 보너스가 포함된 최종 코사인 유사도 반환 (표시용)
+        display_cos_sim = min(1.0, cos_sim + text_bonus)
+        
+        return display_cos_sim, round(calibrated_score, 2)
