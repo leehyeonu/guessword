@@ -14,7 +14,11 @@ interface ClearItem {
   nickname: string;
 }
 
-export default function ClearTicker() {
+interface ClearTickerProps {
+  userNickname?: string;
+}
+
+export default function ClearTicker({ userNickname }: ClearTickerProps) {
   const [clears, setClears] = useState<ClearItem[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -94,31 +98,41 @@ export default function ClearTicker() {
           </div>
         ) : clears.length > 0 ? (
           <AnimatePresence initial={false}>
-            {clears.map((clear) => (
-              <motion.div
-                key={clear.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="flex items-center justify-between text-[11px] sm:text-xs p-2 sm:p-2.5 rounded-lg bg-[var(--apple-gray-btn)] border-none"
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Zap className="w-3.5 h-3.5 text-[var(--apple-blue)] shrink-0" />
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
-                    <span className="text-slate-900 dark:text-white font-bold">{clear.nickname}</span>님이 <span className="text-[var(--apple-blue)] font-bold">정답</span>을 맞췄습니다!
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                  <span className="text-[9px] sm:text-[10px] text-[var(--apple-blue)] font-mono bg-blue-500/10 px-1.5 py-0.5 rounded-md font-bold">
-                    {clear.attempts}회
-                  </span>
-                  <span className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 min-w-[34px] text-right">
-                    {formatTimeAgo(clear.timestamp)}
-                  </span>
-                </div>
-              </motion.div>
-            ))}
+            {clears.map((clear) => {
+              const isMe = clear.nickname === userNickname;
+              return (
+                <motion.div
+                  key={clear.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className={`flex items-center justify-between text-[11px] sm:text-xs p-2 sm:p-2.5 rounded-lg border-none transition-all ${
+                    isMe
+                      ? "bg-blue-500/10 dark:bg-blue-500/20 ring-1.5 ring-blue-500/20 font-bold"
+                      : "bg-[var(--apple-gray-btn)]"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Zap className="w-3.5 h-3.5 text-[var(--apple-blue)] shrink-0" />
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                      <span className="text-slate-900 dark:text-white font-bold">
+                        {clear.nickname}
+                        {isMe && <span className="text-[9px] sm:text-[10px] text-[var(--apple-blue)] font-bold ml-1">(나)</span>}
+                      </span>님이 <span className="text-[var(--apple-blue)] font-bold">정답</span>을 맞췄습니다!
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                    <span className="text-[9px] sm:text-[10px] text-[var(--apple-blue)] font-mono bg-blue-500/10 px-1.5 py-0.5 rounded-md font-bold">
+                      {clear.attempts}회
+                    </span>
+                    <span className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 min-w-[34px] text-right">
+                      {formatTimeAgo(clear.timestamp)}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         ) : (
           <div className="text-center text-xs text-slate-500 py-6 leading-relaxed">

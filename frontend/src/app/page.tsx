@@ -32,6 +32,15 @@ interface GuessHistoryItem {
   timestamp: string;
 }
 
+interface PastSession {
+  id: string;
+  resetTime: string;
+  gameId: string;
+  bestScore: number;
+  attemptsCount: number;
+  guesses: GuessHistoryItem[];
+}
+
 export default function GamePage() {
   // 상태 변수들
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -43,6 +52,9 @@ export default function GamePage() {
   
   // 익명 닉네임 상태 (localStorage 유지)
   const [nickname, setNickname] = useState("");
+
+  // 이전 초기화된 세션 목록 상태
+  const [pastSessions, setPastSessions] = useState<PastSession[]>([]);
   
   // 최고 기록
   const [localBestScore, setLocalBestScore] = useState(0);
@@ -119,6 +131,16 @@ export default function GamePage() {
       localStorage.setItem("guessword_nickname", savedNickname);
     }
     setNickname(savedNickname);
+
+    // 이전 초기화된 세션 복구
+    const savedPast = localStorage.getItem("guessword_past_sessions");
+    if (savedPast) {
+      try {
+        setPastSessions(JSON.parse(savedPast));
+      } catch (e) {
+        console.error("이전 세션 파싱 에러:", e);
+      }
+    }
 
     // 튜토리얼 아직 안 봤으면 띄워주기
     const seenTutorial = localStorage.getItem("guessword_tutorial_seen");
@@ -197,6 +219,36 @@ export default function GamePage() {
         setLocalBestScore(0);
       }
     } else {
+      // 새로운 게임 세션 시작 시 기존 기록이 존재한다면 이전 세션 목록에 백업
+      if (savedHistory) {
+        try {
+          const prevHistory = JSON.parse(savedHistory) as GuessHistoryItem[];
+          if (prevHistory.length > 0) {
+            const savedBest = localStorage.getItem(`guessword_best_score_${savedGameId}`) || "0";
+            const newSession: PastSession = {
+              id: Date.now().toString(),
+              resetTime: new Date().toISOString(),
+              gameId: savedGameId || "unknown",
+              bestScore: Number(savedBest),
+              attemptsCount: prevHistory.length,
+              guesses: prevHistory,
+            };
+            
+            // 기존 pastSessions 상태와 로컬스토리지 업데이트
+            const savedPastStr = localStorage.getItem("guessword_past_sessions");
+            let currentPast: PastSession[] = [];
+            if (savedPastStr) {
+              currentPast = JSON.parse(savedPastStr);
+            }
+            const updatedPast = [newSession, ...currentPast];
+            setPastSessions(updatedPast);
+            localStorage.setItem("guessword_past_sessions", JSON.stringify(updatedPast));
+          }
+        } catch (e) {
+          console.error("이전 세션 백업 에러:", e);
+        }
+      }
+
       // 새로운 게임 세션 시작 시 로컬 기록 날리고 초기화
       setHistory([]);
       setCurrentGuess(null);
@@ -489,17 +541,7 @@ export default function GamePage() {
     }
   };
 
-  // 게임 진행 내역 수동 리셋
-  const handleResetGame = () => {
-    if (confirm("현재 게임 기록을 초기화하시겠습니까?")) {
-      setHistory([]);
-      setCurrentGuess(null);
-      setIsGameWon(false);
-      setLocalBestScore(0);
-      localStorage.setItem("guessword_history", JSON.stringify([]));
-      localStorage.removeItem(`guessword_best_score_${gameId}`);
-    }
-  };
+
 
   // 선택 정렬 옵션에 따라 기록 목록 가공
   const getSortedHistory = () => {
@@ -586,14 +628,6 @@ export default function GamePage() {
           </button>
 
           <button
-            onClick={handleResetGame}
-            className="p-2.5 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-red-500 cursor-pointer transition active:scale-95 border-none shadow-none"
-            title="기록 초기화"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
-
-          <button
             onClick={() => setIsTutorialOpen(true)}
             className="p-2.5 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer transition active:scale-95 border-none shadow-none"
             title="도움말"
@@ -638,15 +672,6 @@ export default function GamePage() {
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 bg-[var(--apple-gray-btn)] px-4 py-2 rounded-lg">
                       💡 다음 새로운 단어가 활성화될 때까지 잠시 기다려주세요.
                     </p>
-                    
-                    <div className="flex gap-2.5">
-                      <button
-                        onClick={handleResetGame}
-                        className="px-4 py-2 rounded-lg text-xs font-semibold bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-700 dark:text-slate-350 cursor-pointer active:scale-95 border-none transition-all duration-150"
-                      >
-                        내 기록 초기화
-                      </button>
-                    </div>
                   </div>
                 </motion.div>
               )}
@@ -789,8 +814,9 @@ export default function GamePage() {
                 </div>
               </div>
               
-              <span className="text-[10px] text-slate-500 font-bold">
-                시도 횟수: <span className="text-slate-800 dark:text-white font-bold">{history.length}</span>
+              <span className="text-[10px] text-slate-500 font-bold flex items-center gap-2">
+                {nickname && <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--apple-gray-btn)] text-slate-650 dark:text-slate-350 font-semibold">{nickname}</span>}
+                <span>시도 횟수: <strong className="text-slate-800 dark:text-white font-bold">{history.length}</strong></span>
               </span>
             </div>
 
@@ -845,12 +871,60 @@ export default function GamePage() {
                 첫 단어를 입력하고 게임을 시작해보세요!
               </div>
             )}
+
+            {/* 이전 초기화된 시도 기록 (모아보기) */}
+            {pastSessions.length > 0 && (
+              <div className="mt-6 pt-5 border-t border-slate-200 dark:border-zinc-800 w-full">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-450 mb-3 flex items-center justify-between">
+                  <span>이전 시도 기록 ({pastSessions.length}개 세션)</span>
+                  <button 
+                    onClick={() => {
+                      if (confirm("이전 시도 기록 목록을 완전히 지우시겠습니까?")) {
+                        setPastSessions([]);
+                        localStorage.removeItem("guessword_past_sessions");
+                      }
+                    }}
+                    className="text-[9px] text-red-500 hover:text-red-600 bg-transparent border-none cursor-pointer p-0 font-semibold uppercase tracking-wider"
+                  >
+                    목록 전체 삭제
+                  </button>
+                </h4>
+                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                  {pastSessions.map((session, index) => (
+                    <div 
+                      key={session.id} 
+                      className="liquid-glass p-3 rounded-xl border border-slate-200/50 dark:border-white/5 text-[11px] sm:text-xs"
+                    >
+                      <div className="flex items-center justify-between font-bold text-slate-700 dark:text-slate-350 mb-2 pb-1.5 border-b border-slate-200/40 dark:border-zinc-800/40">
+                        <span>라운드 #{pastSessions.length - index} (시도 {session.attemptsCount}회)</span>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          최고 {session.bestScore}점 · {new Date(session.resetTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </span>
+                      </div>
+                      
+                      {/* 이 세션의 단어들 나열 */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {session.guesses.map((g, gi) => (
+                          <span 
+                            key={gi} 
+                            className="px-2 py-0.5 rounded bg-[rgba(120,120,128,0.06)] dark:bg-[rgba(120,120,128,0.12)] text-slate-900 dark:text-white font-medium"
+                            title={`점수: ${g.score}점 / 유사도: ${g.similarity.toFixed(4)}`}
+                          >
+                            {g.word} <strong className="text-[9px] text-[var(--apple-blue)] font-bold font-mono ml-0.5">{g.score}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* 우측 실시간 피드 전광판 */}
         <div className="lg:col-span-1 w-full space-y-4">
-          <ClearTicker />
+          <ClearTicker userNickname={nickname} />
         </div>
 
       </div>
