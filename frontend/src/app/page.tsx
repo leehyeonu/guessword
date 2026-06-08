@@ -597,7 +597,7 @@ export default function GamePage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-white/95 dark:bg-black/95 backdrop-blur-xl z-20 flex flex-col items-center justify-center p-6 text-center"
+                  className="absolute inset-0 bg-[#f2f2f7] dark:bg-[#000000] z-20 flex flex-col items-center justify-center p-6 text-center"
                 >
                   <motion.div
                     initial={{ scale: 0.8, y: -10 }}
