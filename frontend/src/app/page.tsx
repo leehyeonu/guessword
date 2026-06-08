@@ -463,10 +463,10 @@ export default function GamePage() {
             <Flame className="w-6 h-6 animate-pulse text-indigo-400" />
           </div>
           <div>
-            <h1 className="font-black text-xl md:text-2xl tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-slate-100 via-indigo-200 to-indigo-400">
-              K-SEMANTLE
+            <h1 className="font-black text-xl md:text-2xl tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-slate-800 via-indigo-600 to-indigo-800 dark:from-slate-100 dark:via-indigo-200 dark:to-indigo-400">
+              GUESSKOREAN
             </h1>
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Korean Semantic Guessing Game</p>
+            <p className="text-[10px] text-slate-600 dark:text-slate-400 uppercase tracking-widest font-semibold">단어 맞추기 게임</p>
           </div>
         </div>
 
@@ -584,15 +584,15 @@ export default function GamePage() {
                 >
                   <span className="text-[10px] text-slate-500 tracking-wider font-extrabold uppercase">최근 입력 단어</span>
                   <div className="flex items-center justify-center gap-2 my-1.5">
-                    <h2 className="text-2xl sm:text-3xl font-black text-slate-100 tracking-tight truncate max-w-[200px] sm:max-w-none">{currentGuess.word}</h2>
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight truncate max-w-[200px] sm:max-w-none">{currentGuess.word}</h2>
                     <Flame className={`w-6 h-6 ${getScoreIconColor(currentGuess.score)}`} />
                   </div>
                   
                   <div className="mt-3 flex flex-col items-center justify-center">
                     <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">유사도 점수</span>
-                    <div className="text-4xl sm:text-5xl font-black font-mono tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-slate-100 to-slate-400 my-0.5">
+                    <div className="text-4xl sm:text-5xl font-black font-mono tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-400 my-0.5">
                       {currentGuess.score}
-                      <span className="text-base sm:text-lg font-bold ml-0.5 text-slate-400">/ 100</span>
+                      <span className="text-base sm:text-lg font-bold ml-0.5 text-slate-500 dark:text-slate-400">/ 100</span>
                     </div>
                     
                     <div className="mt-1 flex flex-col items-center gap-3.5">
@@ -618,15 +618,15 @@ export default function GamePage() {
                         </span>
                       )}
                       
-                      <div className="flex items-center gap-3 text-[10px] text-slate-400 font-semibold bg-white/5 px-3 py-1.5 rounded-2xl border border-white/5">
+                      <div className="flex items-center gap-3 text-[10px] text-slate-600 dark:text-slate-400 font-semibold bg-slate-200/50 dark:bg-white/5 px-3 py-1.5 rounded-2xl border border-slate-300/20 dark:border-white/5">
                         <div className="flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                          <span>내 최고: <strong className="text-indigo-300 font-bold">{localBestScore}점</strong></span>
+                          <span>내 최고: <strong className="text-indigo-600 dark:text-indigo-300 font-bold">{localBestScore}점</strong></span>
                         </div>
-                        <div className="w-[1px] h-3 bg-white/10" />
+                        <div className="w-[1px] h-3 bg-slate-300 dark:bg-white/10" />
                         <div className="flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
-                          <span>전체 최고: <strong className="text-rose-300 font-bold">{globalBestScore}점</strong></span>
+                          <span>전체 최고: <strong className="text-rose-600 dark:text-rose-300 font-bold">{globalBestScore}점</strong></span>
                         </div>
                       </div>
                     </div>
@@ -731,10 +731,10 @@ export default function GamePage() {
                         )}`}
                       >
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-slate-500 font-bold font-mono bg-white/5 border border-white/5 w-6 h-6 rounded-lg flex items-center justify-center">
+                          <span className="text-[10px] text-slate-500 font-bold font-mono bg-slate-200/50 dark:bg-white/5 border border-slate-300/10 dark:border-white/5 w-6 h-6 rounded-lg flex items-center justify-center">
                             #{tryNumber}
                           </span>
-                          <span className="font-bold text-slate-100 text-xs sm:text-sm md:text-base tracking-wide truncate max-w-[100px] sm:max-w-none">
+                          <span className="font-bold text-slate-800 dark:text-slate-100 text-xs sm:text-sm md:text-base tracking-wide truncate max-w-[100px] sm:max-w-none">
                             {item.word}
                           </span>
                         </div>
@@ -742,14 +742,14 @@ export default function GamePage() {
                         <div className="flex items-center gap-4">
                           <div className="hidden sm:flex flex-col items-end text-[9px] leading-tight">
                             <span className="text-slate-500">코사인 유사도</span>
-                            <span className="font-mono text-slate-400 font-semibold">
+                            <span className="font-mono text-slate-600 dark:text-slate-400 font-semibold">
                               {item.similarity.toFixed(4)}
                             </span>
                           </div>
                           
                           <div className="flex flex-col items-end shrink-0">
                             <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">점수</span>
-                            <span className="font-bold font-mono text-sm md:text-base">
+                            <span className="font-bold font-mono text-sm md:text-base text-slate-850 dark:text-slate-100">
                               {item.score}
                             </span>
                           </div>
