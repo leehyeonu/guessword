@@ -151,3 +151,64 @@ html.dark .liquid-glass-interactive:focus-within {
 .shake-element {
   animation: shake-anim 0.3s ease-in-out;
 }
+
+/* 확실한 글씨 가독성 확보를 위한 강제 색상 지정 (Tailwind 컴파일러 우회용) */
+html:not(.dark) .text-slate-500,
+html:not(.dark) .text-slate-600,
+html:not(.dark) .text-slate-650 {
+  color: #48484a !important; /* 가독성 높은 짙은 회색 */
+}
+
+html:not(.dark) .text-slate-700,
+html:not(.dark) .text-slate-800,
+html:not(.dark) .text-slate-900 {
+  color: #1d1d1f !important; /* Apple Natural Black */
+}
+
+html:not(.dark) .text-slate-400 {
+  color: #6e6e73 !important; /* 중간 회색 */
+}
+
+html:not(.dark) .text-slate-350,
+html:not(.dark) .text-slate-300 {
+  color: #86868b !important; /* 연한 회색 */
+}
+
+/* 다크 모드 가독성 강제 지정 */
+html.dark .text-slate-100,
+html.dark .text-slate-200,
+html.dark .text-slate-300,
+html.dark .text-white {
+  color: #ffffff !important;
+}
+
+html.dark .text-slate-400,
+html.dark .text-slate-450,
+html.dark .text-slate-500 {
+  color: #aeaeb2 !important;
+}
+
+/* 비표준 색상 가이드 및 폴백 */
+.text-red-650 { color: #ff3b30 !important; }
+html.dark .text-red-650 { color: #ff453a !important; }
+
+.text-orange-650 { color: #ff9500 !important; }
+html.dark .text-orange-650 { color: #ff9f0a !important; }
+
+.text-amber-650 { color: #ffcc00 !important; }
+html.dark .text-amber-650 { color: #ffd60a !important; }
+
+.text-blue-650 { color: #007aff !important; }
+html.dark .text-blue-650 { color: #0a84ff !important; }
+
+.text-zinc-650 { color: #8e8e93 !important; }
+html.dark .text-zinc-650 { color: #8e8e93 !important; }
+
+.text-slate-650 { color: #48484a !important; }
+html.dark .text-slate-650 { color: #aeaeb2 !important; }
+
+.text-slate-350 { color: #86868b !important; }
+html.dark .text-slate-350 { color: #aeaeb2 !important; }
+
+.text-slate-450 { color: #6e6e73 !important; }
+html.dark .text-slate-450 { color: #86868b !important; }
