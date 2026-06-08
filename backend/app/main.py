@@ -12,6 +12,7 @@ from slowapi.errors import RateLimitExceeded
 load_dotenv()
 
 from app.api.routes import router as api_router, limiter
+from app.services.firestore_store import FirestoreStore
 from app.services.nlp import FastTextWrapper
 
 # 기본 로깅 세팅
@@ -67,6 +68,10 @@ async def lifespan(app: FastAPI):
     else:
         app.state.target_word = "사과"
         logger.info("TARGET_WORD 환경변수가 없어서 기본값 '사과'로 세팅함")
+
+    app.state.firestore_store = FirestoreStore()
+    if not app.state.firestore_store.enabled:
+        logger.warning("Firestore 기록/조회 기능이 비활성화된 상태로 실행됩니다.")
 
     yield
 

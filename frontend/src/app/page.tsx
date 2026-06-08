@@ -17,9 +17,6 @@ import {
   Moon
 } from "lucide-react";
 
-import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, onSnapshot, query, where } from "firebase/firestore";
-
 import TutorialModal from "@/components/TutorialModal";
 import Toast from "@/components/Toast";
 import Confetti from "@/components/Confetti";
@@ -40,6 +37,19 @@ interface PastSession {
   attemptsCount: number;
   guesses: GuessHistoryItem[];
 }
+
+const getApiUrl = () => {
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  return rawApiUrl.replace(/\/$/, "");
+};
+
+const fetchGameStats = async (currentGameId: string) => {
+  const response = await fetch(`${getApiUrl()}/api/game_stats?game_id=${encodeURIComponent(currentGameId)}`);
+  if (!response.ok) {
+    throw new Error("Game stats fetch failed");
+  }
+  return response.json() as Promise<{ global_best_score: number }>;
+};
 
 export default function GamePage() {
   // 상태 변수들
@@ -151,9 +161,7 @@ export default function GamePage() {
     // 서버에서 현재 활성화된 게임 세션 ID 가져오기
     const fetchGameInfo = async () => {
       try {
-        const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-        const apiUrl = rawApiUrl.replace(/\/$/, "");
-        const response = await fetch(`${apiUrl}/api/game_info`);
+        const response = await fetch(`${getApiUrl()}/api/game_info`);
         if (response.ok) {
           const data = await response.json();
           if (data.game_id) {
@@ -177,7 +185,8 @@ export default function GamePage() {
   useEffect(() => {
     if (!gameId) return;
 
-    let unsubscribeGuesses = () => {};
+    let isMounted = true;
+    let statsTimer: ReturnType<typeof setInterval> | null = null;
 
     const savedGameId = localStorage.getItem("guessword_game_id");
     const savedHistory = localStorage.getItem("guessword_history");
@@ -263,31 +272,25 @@ export default function GamePage() {
       }
     }
 
-    // Firestore에서 실시간 최고 점수 구독
-    try {
-      const q = query(
-        collection(db, "closest_guesses"),
-        where("gameId", "==", gameId)
-      );
+    const loadStats = async () => {
+      try {
+        const stats = await fetchGameStats(gameId);
+        if (isMounted) {
+          setGlobalBestScore(stats.global_best_score || 0);
+        }
+      } catch (err) {
+        console.error("랭킹 통계 로드 실패:", err);
+      }
+    };
 
-      unsubscribeGuesses = onSnapshot(q, (snapshot) => {
-        let maxScore = 0;
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.score > maxScore) {
-            maxScore = data.score;
-          }
-        });
-        setGlobalBestScore(maxScore);
-      }, (err) => {
-        console.error("실시간 랭킹 로드 실패:", err);
-      });
-    } catch (e) {
-      console.error("최고 점수 실시간 리스너 에러:", e);
-    }
+    loadStats();
+    statsTimer = setInterval(loadStats, 10000);
 
     return () => {
-      unsubscribeGuesses();
+      isMounted = false;
+      if (statsTimer) {
+        clearInterval(statsTimer);
+      }
     };
   }, [gameId]);
 
@@ -358,50 +361,6 @@ export default function GamePage() {
     }
   };
 
-  // 최고 근접 기록 저장
-  const logClosestGuessToFirestore = async (
-    currentGameId: string,
-    currentScore: number,
-    userNick: string,
-    userIp: string,
-    userDevice: string
-  ) => {
-    try {
-      await addDoc(collection(db, "closest_guesses"), {
-        gameId: currentGameId,
-        score: currentScore,
-        timestamp: serverTimestamp(),
-        nickname: userNick,
-        ip: userIp,
-        device: userDevice,
-      });
-    } catch (err) {
-      console.warn("기록 저장 실패 (네트워크 혹은 파이어베이스 키 확인 필요):", err);
-    }
-  };
-
-  // 게임 클리어 기록 저장
-  const logClearToFirestore = async (
-    currentGameId: string,
-    totalAttempts: number,
-    userNick: string,
-    userIp: string,
-    userDevice: string
-  ) => {
-    try {
-      await addDoc(collection(db, "clears"), {
-        gameId: currentGameId,
-        attempts: totalAttempts,
-        timestamp: serverTimestamp(),
-        nickname: userNick,
-        ip: userIp,
-        device: userDevice,
-      });
-    } catch (err) {
-      console.warn("클리어 로그 저장 실패:", err);
-    }
-  };
-
   // 단어 제출 이벤트 핸들러
   const handleGuessSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -434,15 +393,15 @@ export default function GamePage() {
     setIsLoading(true);
 
     try {
-      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const apiUrl = rawApiUrl.replace(/\/$/, "");
-      const response = await fetch(`${apiUrl}/api/guess`, {
+      const response = await fetch(`${getApiUrl()}/api/guess`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           guess_word: cleanGuess,
+          nickname,
+          attempt_count: history.length + 1,
         }),
       });
 
@@ -489,25 +448,6 @@ export default function GamePage() {
 
       playChime(newGuess.score);
 
-      const clientIp = data.client_ip || "unknown";
-      const userAgent = data.user_agent || "unknown";
-
-      // 1. 모든 시도 기록 Firebase 'attempts' 컬렉션에 전송 (IP, 기기 정보 포함)
-      try {
-        await addDoc(collection(db, "attempts"), {
-          gameId: data.game_id,
-          nickname: nickname,
-          word: data.guess_word,
-          similarity: data.similarity,
-          score: data.score,
-          timestamp: serverTimestamp(),
-          ip: clientIp,
-          device: userAgent,
-        });
-      } catch (err) {
-        console.warn("Firestore attempts 기록 실패:", err);
-      }
-
       if (data.is_correct) {
         setIsGameWon(true);
         setTargetWord(data.target_word);
@@ -517,18 +457,22 @@ export default function GamePage() {
         if (typeof navigator !== "undefined" && navigator.vibrate) {
           navigator.vibrate([100, 50, 100]);
         }
-
-        await logClearToFirestore(data.game_id, updatedHistory.length, nickname, clientIp, userAgent);
       } else {
         const score = data.score;
         if (score >= 10 && score > localBestScore) {
           setLocalBestScore(score);
           localStorage.setItem(`guessword_best_score_${gameId}`, score.toString());
-          await logClosestGuessToFirestore(data.game_id, score, nickname, clientIp, userAgent);
           if (score > globalBestScore) {
             setGlobalBestScore(score);
           }
         }
+      }
+
+      try {
+        const stats = await fetchGameStats(data.game_id);
+        setGlobalBestScore(stats.global_best_score || 0);
+      } catch (err) {
+        console.error("랭킹 통계 새로고침 실패:", err);
       }
     } catch (err) {
       triggerError("서버 통신 에러가 발생했습니다. 백엔드가 작동 중인지 확인하세요.");

@@ -1,4 +1,5 @@
 import hashlib
+import os
 import unicodedata
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field
@@ -13,6 +14,8 @@ limiter = Limiter(key_func=get_remote_address)
 # API 입출력 모델 스키마
 class GuessRequest(BaseModel):
     guess_word: str = Field(..., description="사용자가 입력한 추측 단어")
+    nickname: str = Field("익명", description="사용자 표시 닉네임", max_length=20)
+    attempt_count: int = Field(1, description="현재 게임에서의 누적 시도 횟수", ge=1)
 
 class GuessResponse(BaseModel):
     guess_word: str
@@ -21,8 +24,6 @@ class GuessResponse(BaseModel):
     is_correct: bool = Field(..., description="정답 여부")
     target_word: str = Field(..., description="정답 단어 (맞췄을 때만 채워지고 평소엔 빈값)")
     game_id: str = Field(..., description="현재 정답의 SHA-256 해시값")
-    client_ip: str = Field(..., description="요청한 클라이언트 IP")
-    user_agent: str = Field(..., description="요청한 클라이언트 User-Agent")
 
 class GameInfoResponse(BaseModel):
     game_id: str = Field(..., description="현재 정답의 SHA-256 해시값")
@@ -34,12 +35,41 @@ class ValidateTargetResponse(BaseModel):
     target_word: str
     valid: bool = Field(..., description="사전에 있으면 True, 없으면 False")
 
+class ClearItem(BaseModel):
+    id: str
+    gameId: str
+    attempts: int
+    timestamp: str
+    nickname: str
+
+class GameStatsResponse(BaseModel):
+    global_best_score: float
+    recent_clears: list[ClearItem]
+
 
 def get_game_id(target_word: str) -> str:
     """정답 단어의 해시값(SHA-256)을 구합니다."""
     hasher = hashlib.sha256()
+    salt = os.getenv("GAME_ID_SALT", "").strip()
+    if salt:
+        hasher.update(salt.encode("utf-8"))
+        hasher.update(b":")
     hasher.update(target_word.encode("utf-8"))
     return hasher.hexdigest()
+
+
+def get_client_metadata(request: Request) -> tuple[str, str]:
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    x_real_ip = request.headers.get("x-real-ip")
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(",")[0].strip()
+    elif x_real_ip:
+        client_ip = x_real_ip.strip()
+    else:
+        client_ip = request.client.host if request.client else "unknown"
+
+    user_agent = request.headers.get("user-agent", "unknown")
+    return client_ip, user_agent
 
 
 @router.get("/game_info", response_model=GameInfoResponse)
@@ -51,6 +81,22 @@ def get_game_info(request: Request):
         request.app.state.target_word = target
     
     return GameInfoResponse(game_id=get_game_id(target))
+
+
+@router.get("/game_stats", response_model=GameStatsResponse)
+def get_game_stats(request: Request, game_id: str | None = None, limit: int = 5):
+    """공개 UI에 필요한 최소 통계만 백엔드 API를 통해 조회"""
+    target = getattr(request.app.state, "target_word", "사과") or "사과"
+    current_game_id = game_id or get_game_id(target)
+    store = getattr(request.app.state, "firestore_store", None)
+
+    if store is None:
+        return GameStatsResponse(global_best_score=0, recent_clears=[])
+
+    return GameStatsResponse(
+        global_best_score=store.get_global_best_score(current_game_id),
+        recent_clears=store.get_recent_clears(limit),
+    )
 
 
 @router.post("/guess", response_model=GuessResponse)
@@ -88,18 +134,21 @@ def guess(request: Request, body: GuessRequest):
     similarity, score = nlp_wrapper.calculate_score(target, guess)
     is_correct = (target == guess)
     game_id = get_game_id(target)
+    client_ip, user_agent = get_client_metadata(request)
 
-    # IP 및 User-Agent 추출
-    x_forwarded_for = request.headers.get("x-forwarded-for")
-    x_real_ip = request.headers.get("x-real-ip")
-    if x_forwarded_for:
-        client_ip = x_forwarded_for.split(",")[0].strip()
-    elif x_real_ip:
-        client_ip = x_real_ip.strip()
-    else:
-        client_ip = request.client.host if request.client else "unknown"
-
-    user_agent = request.headers.get("user-agent", "unknown")
+    store = getattr(request.app.state, "firestore_store", None)
+    if store is not None:
+        store.log_guess(
+            game_id=game_id,
+            nickname=body.nickname,
+            word=guess,
+            similarity=similarity,
+            score=score,
+            is_correct=is_correct,
+            attempt_count=body.attempt_count,
+            ip=client_ip,
+            device=user_agent,
+        )
 
     return GuessResponse(
         guess_word=guess,
@@ -107,9 +156,7 @@ def guess(request: Request, body: GuessRequest):
         score=score,
         is_correct=is_correct,
         target_word=target if is_correct else "",
-        game_id=game_id,
-        client_ip=client_ip,
-        user_agent=user_agent
+        game_id=game_id
     )
 
 

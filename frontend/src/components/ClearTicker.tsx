@@ -2,8 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { db } from "@/lib/firebase";
-import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { Award, Zap } from "lucide-react";
 
 interface ClearItem {
@@ -18,53 +16,68 @@ interface ClearTickerProps {
   userNickname?: string;
 }
 
+interface GameStatsApiResponse {
+  recent_clears?: Array<{
+    id: string;
+    gameId?: string;
+    attempts?: number;
+    timestamp?: string;
+    nickname?: string;
+  }>;
+}
+
+const getApiUrl = () => {
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  return rawApiUrl.replace(/\/$/, "");
+};
+
 export default function ClearTicker({ userNickname }: ClearTickerProps) {
   const [clears, setClears] = useState<ClearItem[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let unsubscribe = () => {};
+    let isMounted = true;
+    let statsTimer: ReturnType<typeof setInterval> | null = null;
 
-    try {
-      const q = query(
-        collection(db, "clears"),
-        orderBy("timestamp", "desc"),
-        limit(5)
-      );
+    const loadClears = async () => {
+      try {
+        const response = await fetch(`${getApiUrl()}/api/game_stats?limit=5`);
+        if (!response.ok) {
+          throw new Error("Game stats fetch failed");
+        }
+        const data = await response.json() as GameStatsApiResponse;
+        const loadedClears = (data.recent_clears || []).map((clear) => ({
+          id: clear.id,
+          gameId: clear.gameId || "",
+          attempts: clear.attempts || 0,
+          timestamp: clear.timestamp ? new Date(clear.timestamp) : new Date(),
+          nickname: clear.nickname || "누군가",
+        }));
 
-      unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const loadedClears: ClearItem[] = [];
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            loadedClears.push({
-              id: doc.id,
-              gameId: data.gameId || "",
-              attempts: data.attempts || 0,
-              timestamp: data.timestamp?.toDate() || new Date(),
-              nickname: data.nickname || "누군가",
-            });
-          });
-
+        if (isMounted) {
           setClears(loadedClears);
           setErrorMsg("");
           setIsLoading(false);
-        },
-        (error) => {
-          console.error("Firestore 리스너 에러:", error);
-          setErrorMsg("데이터베이스에서 기록을 읽을 수 없습니다. 환경변수(.env.local) 설정이나 보안 규칙을 확인해 주세요.");
+        }
+      } catch (error) {
+        console.error("클리어 현황 로드 실패:", error);
+        if (isMounted) {
+          setErrorMsg("기록을 읽을 수 없습니다. 백엔드 API와 Firebase Admin 설정을 확인해 주세요.");
           setIsLoading(false);
         }
-      );
-    } catch (err: any) {
-      console.error("Firestore 연결 예외:", err);
-      setErrorMsg("Firebase DB 초기화 실패. 환경 설정을 점검해 주세요.");
-      setIsLoading(false);
-    }
+      }
+    };
 
-    return () => unsubscribe();
+    loadClears();
+    statsTimer = setInterval(loadClears, 10000);
+
+    return () => {
+      isMounted = false;
+      if (statsTimer) {
+        clearInterval(statsTimer);
+      }
+    };
   }, []);
 
   const formatTimeAgo = (date: Date) => {
@@ -144,4 +157,3 @@ export default function ClearTicker({ userNickname }: ClearTickerProps) {
     </div>
   );
 }
-
