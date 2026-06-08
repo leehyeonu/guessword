@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "K-Semantle (한국어 꼬맨틀) - 단어 의미 추측 게임",
-  description: "유사도를 비교하며 숨겨진 비밀 단어를 유추해내는 한국어 꼬맨틀 단어 추정 게임입니다. 매일 새로운 정답 단어에 도전해 보세요!",
+  title: "GuessKorean - 단어 추측 게임",
+  description: "유사도를 비교하며 숨겨진 비밀 단어를 유추해내는 단어 추정 게임입니다. 정답 단어에 도전해 보세요!",
   icons: {
     icon: "/icon.svg",
   },

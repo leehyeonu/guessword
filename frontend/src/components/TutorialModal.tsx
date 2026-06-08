@@ -59,7 +59,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                 <div>
                   <h4 className="font-semibold text-slate-100 mb-0.5">1. 정답 단어 맞추기</h4>
                   <p className="text-xs md:text-sm text-slate-400">
-                    오늘 지정된 비밀 정답 단어를 유추해내는 게임입니다. 명사 위주로 입력해보세요.
+                    비밀 정답 단어를 유추해내는 게임입니다.
                   </p>
                 </div>
               </div>
