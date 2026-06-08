@@ -92,7 +92,7 @@ def get_game_info(request: Request):
 
 import time
 
-# 간단한 인-메모리 TTL 캐시 (30초 만료)
+# 간단한 인-메모리 TTL 캐시 (60초 만료)
 _game_stats_cache = {}
 
 @router.get("/game_stats", response_model=GameStatsResponse)
@@ -107,7 +107,7 @@ def get_game_stats(request: Request, game_id: str | None = None, limit: int = 5)
 
     if cache_key in _game_stats_cache:
         cached_item = _game_stats_cache[cache_key]
-        if now - cached_item["timestamp"] < 30:  # 30초 캐싱
+        if now - cached_item["timestamp"] < 60:  # 60초 캐싱
             return cached_item["data"]
 
     store = getattr(request.app.state, "firestore_store", None)
