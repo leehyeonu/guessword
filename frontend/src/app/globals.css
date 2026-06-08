@@ -3,7 +3,7 @@
 :root {
   /* Apple System Light Palette */
   --background: #f2f2f7;      /* iOS Grouped Background Light */
-  --foreground: #000000;      /* Primary Label Light */
+  --foreground: #1d1d1f;      /* Primary Label Light (Apple Natural Black) */
   --foreground-secondary: rgba(60, 60, 67, 0.6);   /* Secondary Label Light */
   --foreground-tertiary: rgba(60, 60, 67, 0.3);    /* Tertiary Label Light */
   
@@ -23,6 +23,15 @@
   
   --scrollbar-thumb: rgba(0, 0, 0, 0.15);
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+
+  /* Tailwind CSS v4 slate overrides - Light Mode (Forces high contrast legibility) */
+  --color-slate-300: #86868b;
+  --color-slate-400: #6e6e73;
+  --color-slate-500: #57575a;
+  --color-slate-600: #48484a;
+  --color-slate-700: #3a3a3c;
+  --color-slate-800: #2c2c2e;
+  --color-slate-900: #1d1d1f;
 }
 
 :root.dark,
@@ -49,6 +58,15 @@ html.dark {
   
   --scrollbar-thumb: rgba(255, 255, 255, 0.2);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.45);
+
+  /* Tailwind CSS v4 slate overrides - Dark Mode */
+  --color-slate-300: #e5e5ea;
+  --color-slate-400: #cbd5e1;
+  --color-slate-500: #aeaeb2;
+  --color-slate-600: #86868b;
+  --color-slate-700: #f5f5f7;
+  --color-slate-800: #ffffff;
+  --color-slate-900: #ffffff;
 }
 
 body {
