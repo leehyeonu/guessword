@@ -28,24 +28,26 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
             className="absolute inset-0 bg-black/60 backdrop-blur-md"
           />
 
-          {/* 모달 본문 (다크/라이트 테마 텍스트 교정) */}
+          {/* 모달 본문 */}
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="liquid-glass w-[94%] max-w-md max-h-[85vh] overflow-y-auto rounded-3xl p-5 sm:p-7 relative text-slate-800 dark:text-slate-100 z-10"
+            className="liquid-glass w-[94%] max-w-md h-auto max-h-[85vh] overflow-y-auto rounded-3xl p-5 sm:p-7 relative text-slate-800 dark:text-slate-100 z-10"
           >
-            {/* 내부 장식 광원 효과 */}
-            <div className="absolute -top-20 -right-20 w-44 h-44 rounded-full bg-violet-600/20 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-20 -left-20 w-44 h-44 rounded-full bg-pink-600/20 blur-3xl pointer-events-none" />
+            {/* 내부 장식 광원 효과 (스크롤 영역 팽창 방지를 위해 overflow-hidden 컨테이너로 감싸기) */}
+            <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
+              <div className="absolute -top-20 -right-20 w-44 h-44 rounded-full bg-violet-600/20 blur-3xl" />
+              <div className="absolute -bottom-20 -left-20 w-44 h-44 rounded-full bg-pink-600/20 blur-3xl" />
+            </div>
 
-            {/* 모달 헤더 */}
+            {/* 모달 헤더 (텍스트 투명 에러 방지를 위해 플랫 텍스트로 보정) */}
             <div className="flex items-center gap-2.5 mb-4 sm:mb-5">
-              <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-violet-400">
+              <div className="p-2 rounded-xl bg-slate-200/50 dark:bg-white/5 border border-slate-300/10 dark:border-white/10 text-violet-600 dark:text-violet-400">
                 <BookOpen className="w-5 h-5" />
               </div>
-              <h2 className="text-base sm:text-lg md:text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-100 dark:to-slate-400">
+              <h2 className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
                 GuessKorean 플레이 가이드 🎮
               </h2>
             </div>

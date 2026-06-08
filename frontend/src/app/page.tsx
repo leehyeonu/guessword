@@ -12,7 +12,9 @@ import {
   Volume2,
   VolumeX,
   Trophy,
-  Loader2
+  Loader2,
+  Sun,
+  Moon
 } from "lucide-react";
 
 import { db } from "@/lib/firebase";
@@ -32,6 +34,7 @@ interface GuessHistoryItem {
 
 export default function GamePage() {
   // 상태 변수들
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [gameId, setGameId] = useState("");
   const [targetWord, setTargetWord] = useState("");
   const [guessInput, setGuessInput] = useState("");
@@ -60,6 +63,44 @@ export default function GamePage() {
 
   // 입력창 흔들림 효과 트리거용
   const [shouldShakeInput, setShouldShakeInput] = useState(false);
+
+  // 테마 초기 설정 및 시스템 설정 변화 감지
+  useEffect(() => {
+    // 1. 초기 테마 상태 동기화
+    const isDark = document.documentElement.classList.contains("dark");
+    setTheme(isDark ? "dark" : "light");
+
+    // 2. 시스템 테마 변경 실시간 반영 (수동 테마 지정이 없을 때만)
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e: MediaQueryListEvent) => {
+      const hasSavedTheme = localStorage.getItem("guessword_theme");
+      if (!hasSavedTheme) {
+        const newTheme = e.matches ? "dark" : "light";
+        setTheme(newTheme);
+        if (newTheme === "dark") {
+          document.documentElement.classList.add("dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+        }
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  // 수동 테마 전환
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    if (newTheme === "dark") {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("guessword_theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("guessword_theme", "light");
+    }
+  };
 
   // 최초 로드 시 설정 복구 및 서버 세션 체크
   useEffect(() => {
@@ -457,17 +498,11 @@ export default function GamePage() {
       />
 
       {/* 헤더 */}
-      <header className="w-full flex flex-col sm:flex-row items-center justify-between py-4 gap-4 sm:gap-2 border-b border-white/5 mb-6">
+      <header className="w-full flex flex-col sm:flex-row items-center justify-between py-3.5 gap-4 sm:gap-2 border-b border-slate-200 dark:border-white/5 mb-6">
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="p-2 rounded-2xl bg-white/5 border border-white/10 text-indigo-400 shadow-inner">
-            <Flame className="w-6 h-6 animate-pulse text-indigo-400" />
-          </div>
-          <div>
-            <h1 className="font-black text-xl md:text-2xl tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-slate-800 via-indigo-600 to-indigo-800 dark:from-slate-100 dark:via-indigo-200 dark:to-indigo-400">
-              GUESSKOREAN
-            </h1>
-            <p className="text-[10px] text-slate-600 dark:text-slate-400 uppercase tracking-widest font-semibold">단어 맞추기 게임</p>
-          </div>
+          <h1 className="font-extrabold text-lg md:text-xl tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-slate-800 via-indigo-600 to-indigo-800 dark:from-slate-100 dark:via-indigo-200 dark:to-indigo-400">
+            GUESSKOREAN
+          </h1>
         </div>
 
         {/* 설정 및 보조 기능 */}
@@ -481,6 +516,14 @@ export default function GamePage() {
               <span>최고 근접: {globalBestScore}점</span>
             </div>
           )}
+
+          <button
+            onClick={toggleTheme}
+            className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-slate-200 cursor-pointer transition shadow-md active:scale-95"
+            title={theme === "light" ? "다크 모드로 전환" : "라이트 모드로 전환"}
+          >
+            {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          </button>
 
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
