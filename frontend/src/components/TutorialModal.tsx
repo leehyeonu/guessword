@@ -84,37 +84,29 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
               </div>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-slate-200/70 bg-slate-50/80 px-3 py-3 dark:border-slate-700/70 dark:bg-slate-950/70">
-              <div className="flex items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-2 text-[11px] sm:text-xs font-semibold text-slate-900 dark:text-white">
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-4 h-4"
-                  >
-                    <rect x="2.5" y="2.5" width="19" height="19" rx="5" />
-                    <path d="M16 11.37a4 4 0 1 1-7.99.001A4 4 0 0 1 16 11.37z" />
-                    <path d="M17.5 6.5h.01" />
-                  </svg>
-                  Instagram
-                </div>
-                <a
-                  href="https://instagram.com/0x.hw_81"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-full border border-[var(--apple-blue)] bg-[var(--apple-blue)]/10 px-3 py-1 text-[11px] sm:text-xs font-semibold text-[var(--apple-blue)] hover:bg-[var(--apple-blue)]/15 transition"
+            <div className="mt-6 flex justify-center">
+              <a
+                href="https://instagram.com/0x.hw_81"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--apple-blue)] bg-[var(--apple-blue)]/10 px-4 py-2 text-[11px] sm:text-xs font-semibold text-[var(--apple-blue)] transition hover:bg-[var(--apple-blue)]/20"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4"
                 >
-                  @0x.hw_81
-                </a>
-              </div>
-              <p className="mt-2 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
-                단순 안내용 링크입니다. 클릭하면 인스타그램 프로필로 이동합니다.
-              </p>
+                  <rect x="2.5" y="2.5" width="19" height="19" rx="5" />
+                  <path d="M16 11.37a4 4 0 1 1-7.99.001A4 4 0 0 1 16 11.37z" />
+                  <path d="M17.5 6.5h.01" />
+                </svg>
+                @0x.hw_81
+              </a>
             </div>
 
             {/* 확인 버튼 */}
