@@ -15,6 +15,8 @@ class FirestoreStore:
 
     @property
     def enabled(self) -> bool:
+        if os.getenv("DISABLE_FIRESTORE", "").lower() == "true":
+            return False
         return self.client is not None and self.firestore is not None
 
     def _init_client(self) -> None:
