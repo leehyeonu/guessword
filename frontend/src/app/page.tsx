@@ -60,6 +60,9 @@ export default function GamePage() {
   const historyEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // 입력창 쉐이크 에러 효과 상태
+  const [shouldShakeInput, setShouldShakeInput] = useState(false);
+
 
 
   // LocalStorage에서 데이터 초기화 및 백엔드 game_id 세션 체크
@@ -194,27 +197,60 @@ export default function GamePage() {
     setIsToastOpen(true);
   };
 
+  // 입력 에러 트리거 헬퍼 (흔들림 + 햅틱 진동 + 토스트)
+  const triggerError = (msg: string) => {
+    triggerToast(msg);
+    setShouldShakeInput(true);
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+    setTimeout(() => {
+      setShouldShakeInput(false);
+    }, 400);
+  };
+
   const playChime = (score: number) => {
     if (!soundEnabled) return;
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
       
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      
-      const baseFreq = 220;
-      const targetFreq = baseFreq + (score * 4.5);
-      
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(targetFreq, audioCtx.currentTime);
-      
-      gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
-      
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.6);
+      if (score === 100) {
+        // 승리 시 C major chord arpeggio (C4-E4-G4-C5) 화음 스케줄링
+        const notes = [261.63, 329.63, 392.00, 523.25];
+        notes.forEach((freq, index) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime + index * 0.12);
+          
+          gain.gain.setValueAtTime(0.08, audioCtx.currentTime + index * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.005, audioCtx.currentTime + index * 0.12 + 0.5);
+          
+          osc.start(audioCtx.currentTime + index * 0.12);
+          osc.stop(audioCtx.currentTime + index * 0.12 + 0.5);
+        });
+      } else {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        const baseFreq = 220;
+        const targetFreq = baseFreq + (score * 4.5);
+        
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(targetFreq, audioCtx.currentTime);
+        
+        gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+        
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.6);
+      }
     } catch (e) {
       console.warn("오디오 컨텍스트가 차단되었습니다", e);
     }
@@ -252,13 +288,13 @@ export default function GamePage() {
 
   const handleGuessSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanGuess = guessInput.trim();
+    const cleanGuess = guessInput.normalize("NFC").trim();
     if (!cleanGuess) return;
 
     // 한글 단어 이외의 부적절한 특수문자, 숫자, 자음/모음 초성 단독 차단
     const koreanRegex = /^[가-힣]+$/;
     if (!koreanRegex.test(cleanGuess)) {
-      triggerToast("올바른 한국어 단어만 입력해 주세요. (자/모음 단독, 숫자, 영어, 기호 제외)");
+      triggerError("올바른 한국어 단어만 입력해 주세요. (자/모음 단독, 숫자, 영어, 기호 제외)");
       setGuessInput("");
       setTimeout(() => {
         inputRef.current?.focus();
@@ -267,12 +303,12 @@ export default function GamePage() {
     }
     
     if (isGameWon) {
-      triggerToast("이미 정답을 맞추셨습니다! 다음 도전을 누르거나 설정을 바꿔보세요.");
+      triggerError("이미 정답을 맞추셨습니다! 다음 도전을 누르거나 설정을 바꿔보세요.");
       return;
     }
 
     if (history.some((item) => item.word === cleanGuess)) {
-      triggerToast("이미 입력했던 단어입니다.");
+      triggerError("이미 입력했던 단어입니다.");
       setGuessInput("");
       return;
     }
@@ -293,7 +329,7 @@ export default function GamePage() {
       });
 
       if (response.status === 429) {
-        triggerToast("요청 속도가 너무 빠릅니다. 잠시 후 다시 전송해 주세요.");
+        triggerError("요청 속도가 너무 빠릅니다. 잠시 후 다시 전송해 주세요.");
         return;
       }
 
@@ -301,7 +337,7 @@ export default function GamePage() {
 
       if (!response.ok) {
         // 리퀴드 글래스 토스트 알림을 통해 OOV 또는 일반 API 에러를 동적으로 처리
-        triggerToast(data.detail || "사전에 없는 단어입니다.");
+        triggerError(data.detail || "사전에 없는 단어입니다.");
         return;
       }
 
@@ -341,6 +377,12 @@ export default function GamePage() {
         setIsGameWon(true);
         setTargetWord(data.target_word);
         localStorage.setItem("guessword_target_word", data.target_word);
+        
+        // 햅틱 승리 진동 피드백
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          navigator.vibrate([100, 50, 100]);
+        }
+
         // Firebase Firestore clears 컬렉션에 시도 횟수 메타데이터를 동기적으로 작성
         await logClearToFirestore(data.game_id, updatedHistory.length);
       } else {
@@ -355,7 +397,7 @@ export default function GamePage() {
         }
       }
     } catch (err) {
-      triggerToast("서버 통신 에러가 발생했습니다. 백엔드가 켜져 있는지 확인하세요.");
+      triggerError("서버 통신 에러가 발생했습니다. 백엔드가 켜져 있는지 확인하세요.");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -625,7 +667,7 @@ export default function GamePage() {
                   value={guessInput}
                   onChange={(e) => setGuessInput(e.target.value)}
                   disabled={isLoading || isGameWon}
-                  className="liquid-glass liquid-glass-interactive w-full pl-4 sm:pl-5 pr-12 sm:pr-14 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-slate-100 placeholder-slate-500 focus:placeholder-slate-400 outline-none text-xs sm:text-sm md:text-base disabled:opacity-50"
+                  className={`liquid-glass liquid-glass-interactive w-full pl-4 sm:pl-5 pr-12 sm:pr-14 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-slate-100 placeholder-slate-500 focus:placeholder-slate-400 outline-none text-xs sm:text-sm md:text-base disabled:opacity-50 ${shouldShakeInput ? "shake-element" : ""}`}
                 />
                 <button
                   type="submit"

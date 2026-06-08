@@ -1,4 +1,5 @@
 import hashlib
+import unicodedata
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field
 from slowapi import Limiter
@@ -74,7 +75,7 @@ def guess(request: Request, body: GuessRequest):
         target = "사과"
         request.app.state.target_word = target
 
-    guess = body.guess_word.strip()
+    guess = unicodedata.normalize('NFC', body.guess_word.strip())
 
     if not guess:
         raise HTTPException(
@@ -115,7 +116,7 @@ def validate_target(request: Request, body: ValidateTargetRequest):
             detail="서버에 FastText 모델이 아직 초기화되지 않았습니다."
         )
 
-    target = body.target_word.strip()
+    target = unicodedata.normalize('NFC', body.target_word.strip())
     if not target:
         return ValidateTargetResponse(target_word=target, valid=False)
 

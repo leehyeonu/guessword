@@ -1,5 +1,6 @@
 import os
 import logging
+import unicodedata
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -66,8 +67,8 @@ async def lifespan(app: FastAPI):
     # 정답 단어 환경변수 로드 로직
     env_target = os.getenv("TARGET_WORD", "").strip()
     if env_target:
-        app.state.target_word = env_target
-        logger.info(f"환경변수에서 정답 단어를 로드했습니다: {app.state.target_word}")
+        app.state.target_word = unicodedata.normalize('NFC', env_target)
+        logger.info(f"환경변수에서 정답 단어를 로드했습니다 (NFC): {app.state.target_word}")
     else:
         app.state.target_word = "사과"
         logger.info(f"TARGET_WORD 환경변수가 지정되지 않아 기본값 '사과'로 정답을 설정합니다.")
