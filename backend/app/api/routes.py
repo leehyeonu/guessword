@@ -90,21 +90,43 @@ def get_game_info(request: Request):
     return GameInfoResponse(game_id=get_game_id(target))
 
 
+import time
+
+# 간단한 인-메모리 TTL 캐시 (30초 만료)
+_game_stats_cache = {}
+
 @router.get("/game_stats", response_model=GameStatsResponse)
 def get_game_stats(request: Request, game_id: str | None = None, limit: int = 5):
     """공개 UI에 필요한 최소 통계만 백엔드 API를 통해 조회"""
     target = getattr(request.app.state, "target_word", "사과") or "사과"
     current_game_id = game_id or get_game_id(target)
-    store = getattr(request.app.state, "firestore_store", None)
 
+    # 캐시 확인 (game_id와 limit 기준)
+    cache_key = f"{current_game_id}_{limit}"
+    now = time.time()
+
+    if cache_key in _game_stats_cache:
+        cached_item = _game_stats_cache[cache_key]
+        if now - cached_item["timestamp"] < 30:  # 30초 캐싱
+            return cached_item["data"]
+
+    store = getattr(request.app.state, "firestore_store", None)
     if store is None:
         return GameStatsResponse(global_best_score=0, recent_clears=[], recent_attempts=[])
 
-    return GameStatsResponse(
+    response_data = GameStatsResponse(
         global_best_score=store.get_global_best_score(current_game_id),
         recent_clears=store.get_recent_clears(limit),
         recent_attempts=store.get_recent_attempts(10),
     )
+
+    # 캐시에 저장
+    _game_stats_cache[cache_key] = {
+        "timestamp": now,
+        "data": response_data
+    }
+
+    return response_data
 
 
 @router.post("/guess", response_model=GuessResponse)
@@ -157,6 +179,11 @@ def guess(request: Request, body: GuessRequest):
             ip=client_ip,
             device=user_agent,
         )
+
+        # 캐시 무효화 (새 시도가 들어갔으므로 다음 조회 시 갱신 유도)
+        keys_to_remove = [k for k in _game_stats_cache if k.startswith(game_id)]
+        for k in keys_to_remove:
+            _game_stats_cache.pop(k, None)
 
     return GuessResponse(
         guess_word=guess,

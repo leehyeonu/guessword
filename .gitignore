@@ -27,3 +27,5 @@ backend/.env
 .vscode/
 .DS_Store
 Thumbs.db
+.vercel
+.env*

@@ -23,6 +23,38 @@ import Confetti from "@/components/Confetti";
 import ClearTicker from "@/components/ClearTicker";
 import AttemptTicker from "@/components/AttemptTicker";
 
+interface AttemptItem {
+  id: string;
+  nickname: string;
+  score: number;
+  timestamp: Date;
+}
+
+interface ClearItem {
+  id: string;
+  gameId: string;
+  attempts: number;
+  timestamp: Date;
+  nickname: string;
+}
+
+interface GameStatsData {
+  global_best_score: number;
+  recent_clears: Array<{
+    id: string;
+    gameId: string;
+    attempts: number;
+    timestamp: string;
+    nickname: string;
+  }>;
+  recent_attempts: Array<{
+    id: string;
+    nickname: string;
+    score: number;
+    timestamp: string;
+  }>;
+}
+
 interface GuessHistoryItem {
   word: string;
   similarity: number;
@@ -49,7 +81,7 @@ const fetchGameStats = async (currentGameId: string) => {
   if (!response.ok) {
     throw new Error("Game stats fetch failed");
   }
-  return response.json() as Promise<{ global_best_score: number }>;
+  return response.json() as Promise<GameStatsData>;
 };
 
 export default function GamePage() {
@@ -70,6 +102,56 @@ export default function GamePage() {
   // 최고 기록
   const [localBestScore, setLocalBestScore] = useState(0);
   const [globalBestScore, setGlobalBestScore] = useState(0);
+
+  // 전체 통계 데이터 공유 상태
+  const [attempts, setAttempts] = useState<AttemptItem[]>([]);
+  const [clears, setClears] = useState<ClearItem[]>([]);
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
+  const [isStatsRefreshing, setIsStatsRefreshing] = useState(false);
+  const [statsError, setStatsError] = useState("");
+
+  // 통계 통합 로드 콜백 함수
+  const loadAllStats = useCallback(async (isManualRefresh = false) => {
+    if (!gameId) return;
+    if (isManualRefresh) {
+      setIsStatsRefreshing(true);
+    } else {
+      setIsStatsLoading(true);
+    }
+    setStatsError("");
+
+    try {
+      const data = await fetchGameStats(gameId);
+      setGlobalBestScore(data.global_best_score || 0);
+
+      const parsedAttempts = (data.recent_attempts || []).map((a) => ({
+        id: a.id || `attempt-${Math.random()}`,
+        nickname: a.nickname || "누군가",
+        score: typeof a.score === "number" ? Math.max(0, Math.min(100, a.score)) : 0,
+        timestamp: a.timestamp && !isNaN(new Date(a.timestamp).getTime())
+          ? new Date(a.timestamp)
+          : new Date(),
+      }));
+      setAttempts(parsedAttempts);
+
+      const parsedClears = (data.recent_clears || []).map((clear) => ({
+        id: clear.id || `clear-${Math.random()}`,
+        gameId: clear.gameId || "",
+        attempts: Math.max(1, clear.attempts || 1),
+        timestamp: clear.timestamp && !isNaN(new Date(clear.timestamp).getTime())
+          ? new Date(clear.timestamp)
+          : new Date(),
+        nickname: clear.nickname || "누군가",
+      }));
+      setClears(parsedClears);
+    } catch (err) {
+      console.error("랭킹 통계 로드 실패:", err);
+      setStatsError("통계 기록을 불러오는 데 실패했습니다.");
+    } finally {
+      setIsStatsLoading(false);
+      setIsStatsRefreshing(false);
+    }
+  }, [gameId]);
 
   // 정렬 순서 (score = 점수높은순, time = 최신순)
   const [historySortOrder, setHistorySortOrder] = useState<"score" | "time">("score");
@@ -273,18 +355,7 @@ export default function GamePage() {
       }
     }
 
-    const loadStats = async () => {
-      try {
-        const stats = await fetchGameStats(gameId);
-        if (isMounted) {
-          setGlobalBestScore(stats.global_best_score || 0);
-        }
-      } catch (err) {
-        console.error("랭킹 통계 로드 실패:", err);
-      }
-    };
-
-    loadStats();
+    loadAllStats();
     // 자동 폴링 제거 - Firestore 무료 한도 절감
 
     return () => {
@@ -466,12 +537,7 @@ export default function GamePage() {
         }
       }
 
-      try {
-        const stats = await fetchGameStats(data.game_id);
-        setGlobalBestScore(stats.global_best_score || 0);
-      } catch (err) {
-        console.error("랭킹 통계 새로고침 실패:", err);
-      }
+      loadAllStats();
     } catch (err) {
       triggerError("서버 통신 에러가 발생했습니다. 백엔드가 작동 중인지 확인하세요.");
       console.error(err);

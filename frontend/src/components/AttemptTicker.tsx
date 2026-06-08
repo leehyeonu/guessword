@@ -13,89 +13,21 @@ interface AttemptItem {
 
 interface AttemptTickerProps {
   userNickname?: string;
+  attempts: AttemptItem[];
+  isLoading: boolean;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+  errorMsg?: string;
 }
 
-interface GameStatsApiResponse {
-  recent_attempts?: Array<{
-    id: string;
-    nickname?: string;
-    score?: number;
-    timestamp?: string;
-  }>;
-}
-
-const getApiUrl = () => {
-  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  return rawApiUrl.replace(/\/$/, "");
-};
-
-export default function AttemptTicker({ userNickname }: AttemptTickerProps) {
-  const [attempts, setAttempts] = useState<AttemptItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-
-  const loadAttempts = useCallback(async (isManualRefresh = false) => {
-    const startTime = Date.now();
-    const maxRetries = 3;
-    const timeout = 8000; // 8초 타임아웃
-    let lastError: Error | null = null;
-
-    if (isManualRefresh) {
-      setIsRefreshing(true);
-    } else if (!isLoading && !isRefreshing) {
-      return;
-    }
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-        const response = await fetch(`${getApiUrl()}/api/game_stats?limit=5`, {
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`API 오류: ${response.status}`);
-        }
-
-        const data = (await response.json()) as GameStatsApiResponse;
-        const loaded = (data.recent_attempts || []).map((a) => ({
-          id: a.id || `attempt-${Math.random()}`,
-          nickname: a.nickname || "누군가",
-          score: typeof a.score === "number" ? Math.max(0, Math.min(100, a.score)) : 0,
-          timestamp: a.timestamp && !isNaN(new Date(a.timestamp).getTime()) 
-            ? new Date(a.timestamp) 
-            : new Date(),
-        }));
-
-        setAttempts(loaded);
-        setErrorMsg("");
-        setIsLoading(false);
-        setIsRefreshing(false);
-        return;
-      } catch (error) {
-        lastError = error as Error;
-        console.warn(`시도 기록 로드 시도 ${attempt + 1}/${maxRetries} 실패:`, error);
-
-        if (attempt < maxRetries - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
-        }
-      }
-    }
-
-    // 모든 재시도 실패
-    console.error("시도 현황 로드 최종 실패:", lastError);
-    setErrorMsg(`기록을 불러올 수 없습니다 (${lastError?.message || '불명의 오류'})`);
-    setIsLoading(false);
-    setIsRefreshing(false);
-  }, [isLoading, isRefreshing]);
-
-  useEffect(() => {
-    loadAttempts();
-  }, []);
+export default function AttemptTicker({
+  userNickname,
+  attempts,
+  isLoading,
+  isRefreshing,
+  onRefresh,
+  errorMsg,
+}: AttemptTickerProps) {
 
   const formatTimeAgo = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -126,7 +58,7 @@ export default function AttemptTicker({ userNickname }: AttemptTickerProps) {
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">시도 현황</h4>
         </div>
         <button
-          onClick={() => loadAttempts(true)}
+          onClick={() => onRefresh()}
           disabled={isRefreshing || isLoading}
           className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           title="새로고침"

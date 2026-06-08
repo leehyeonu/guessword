@@ -88,31 +88,15 @@ class FirestoreStore:
         try:
             self.client.collection("attempts").add(attempt_payload)
 
+            # 유저의 최신 상태만 머지 (읽기 없이 즉시 쓰기하여 읽기 1회 및 추가 쓰기 2회 절약)
             user_ref = self.client.collection("users").document(safe_nickname)
-            user_snapshot = user_ref.get()
-            previous_user_data = user_snapshot.to_dict() if user_snapshot.exists else {}
             user_payload = {
                 "nickname": safe_nickname,
                 "ip": safe_ip,
                 "device": safe_device,
                 "lastActive": self.firestore.SERVER_TIMESTAMP,
             }
-            if not user_snapshot.exists:
-                user_payload["createdAt"] = self.firestore.SERVER_TIMESTAMP
-
             user_ref.set(user_payload, merge=True)
-            self._log_identity_event(
-                user_ref=user_ref,
-                existing=user_snapshot.exists,
-                previous_ip=previous_user_data.get("ip", ""),
-                previous_device=previous_user_data.get("device", ""),
-                current_ip=safe_ip,
-                current_device=safe_device,
-            )
-
-            user_attempt_payload = dict(attempt_payload)
-            user_attempt_payload.pop("nickname", None)
-            user_ref.collection("attempts").add(user_attempt_payload)
 
             if is_correct:
                 self.client.collection("clears").add({
@@ -164,8 +148,16 @@ class FirestoreStore:
             return 0
 
         try:
-            docs = self.client.collection("closest_guesses").where("gameId", "==", game_id).stream()
-            return max((float(doc.to_dict().get("score", 0)) for doc in docs), default=0)
+            docs = (
+                self.client.collection("closest_guesses")
+                .where("gameId", "==", game_id)
+                .order_by("score", direction=self.firestore.Query.DESCENDING)
+                .limit(1)
+                .stream()
+            )
+            for doc in docs:
+                return float(doc.to_dict().get("score", 0))
+            return 0
         except Exception as exc:
             logger.warning("Firestore 최고 점수 조회 실패: %s", exc)
             return 0

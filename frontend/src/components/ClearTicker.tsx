@@ -14,90 +14,21 @@ interface ClearItem {
 
 interface ClearTickerProps {
   userNickname?: string;
+  clears: ClearItem[];
+  isLoading: boolean;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+  errorMsg?: string;
 }
 
-interface GameStatsApiResponse {
-  recent_clears?: Array<{
-    id: string;
-    gameId?: string;
-    attempts?: number;
-    timestamp?: string;
-    nickname?: string;
-  }>;
-}
-
-const getApiUrl = () => {
-  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  return rawApiUrl.replace(/\/$/, "");
-};
-
-export default function ClearTicker({ userNickname }: ClearTickerProps) {
-  const [clears, setClears] = useState<ClearItem[]>([]);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const loadClears = useCallback(async (isManualRefresh = false) => {
-    const maxRetries = 3;
-    const timeout = 8000; // 8초 타임아웃
-    let lastError: Error | null = null;
-
-    if (isManualRefresh) {
-      setIsRefreshing(true);
-    } else if (!isLoading && !isRefreshing) {
-      return;
-    }
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-        const response = await fetch(`${getApiUrl()}/api/game_stats?limit=5`, {
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`API 오류: ${response.status}`);
-        }
-
-        const data = (await response.json()) as GameStatsApiResponse;
-        const loadedClears = (data.recent_clears || []).map((clear) => ({
-          id: clear.id || `clear-${Math.random()}`,
-          gameId: clear.gameId || "",
-          attempts: Math.max(1, clear.attempts || 1),
-          timestamp: clear.timestamp && !isNaN(new Date(clear.timestamp).getTime()) 
-            ? new Date(clear.timestamp) 
-            : new Date(),
-          nickname: clear.nickname || "누군가",
-        }));
-
-        setClears(loadedClears);
-        setErrorMsg("");
-        setIsLoading(false);
-        setIsRefreshing(false);
-        return;
-      } catch (error) {
-        lastError = error as Error;
-        console.warn(`클리어 기록 로드 시도 ${attempt + 1}/${maxRetries} 실패:`, error);
-
-        if (attempt < maxRetries - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
-        }
-      }
-    }
-
-    // 모든 재시도 실패
-    console.error("클리어 현황 로드 최종 실패:", lastError);
-    setErrorMsg(`기록을 불러올 수 없습니다 (${lastError?.message || '불명의 오류'})`);
-    setIsLoading(false);
-    setIsRefreshing(false);
-  }, [isLoading, isRefreshing]);
-
-  useEffect(() => {
-    loadClears();
-  }, []);
+export default function ClearTicker({
+  userNickname,
+  clears,
+  isLoading,
+  isRefreshing,
+  onRefresh,
+  errorMsg,
+}: ClearTickerProps) {
 
   const formatTimeAgo = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -118,7 +49,7 @@ export default function ClearTicker({ userNickname }: ClearTickerProps) {
           <h4 className="text-xs font-bold uppercase tracking-normal text-slate-800 dark:text-slate-200">클리어 현황</h4>
         </div>
         <button
-          onClick={() => loadClears(true)}
+          onClick={() => onRefresh()}
           disabled={isRefreshing || isLoading}
           className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           title="새로고침"
