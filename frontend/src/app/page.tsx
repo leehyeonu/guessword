@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp, doc, onSnapshot, query, where } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, onSnapshot, query, where } from "firebase/firestore";
 
 import TutorialModal from "@/components/TutorialModal";
 import Toast from "@/components/Toast";
