@@ -156,22 +156,23 @@ html.dark .liquid-glass-interactive:focus-within {
 html:not(.dark) .text-slate-500,
 html:not(.dark) .text-slate-600,
 html:not(.dark) .text-slate-650 {
-  color: #48484a !important; /* 가독성 높은 짙은 회색 */
+  color: #1d1d1f !important; /* Apple Natural Black (아주 선명하고 고급스러운 검정) */
 }
 
 html:not(.dark) .text-slate-700,
 html:not(.dark) .text-slate-800,
 html:not(.dark) .text-slate-900 {
-  color: #1d1d1f !important; /* Apple Natural Black */
+  color: #000000 !important; /* 완전한 검은색 */
 }
 
-html:not(.dark) .text-slate-400 {
-  color: #6e6e73 !important; /* 중간 회색 */
+html:not(.dark) .text-slate-400,
+html:not(.dark) .text-slate-450 {
+  color: #2c2c2e !important; /* 짙은 차콜 그레이 */
 }
 
 html:not(.dark) .text-slate-350,
 html:not(.dark) .text-slate-300 {
-  color: #86868b !important; /* 연한 회색 */
+  color: #3a3a3c !important; /* 어두운 그레이 */
 }
 
 /* 다크 모드 가독성 강제 지정 */
@@ -188,27 +189,27 @@ html.dark .text-slate-500 {
   color: #aeaeb2 !important;
 }
 
-/* 비표준 색상 가이드 및 폴백 */
-.text-red-650 { color: #ff3b30 !important; }
+/* 비표준 색상 가이드 및 폴백 (라이트 모드는 가독성을 극대화한 어두운 톤, 다크 모드는 화사한 네온/시스템 컬러) */
+.text-red-650 { color: #d32f2f !important; }
 html.dark .text-red-650 { color: #ff453a !important; }
 
-.text-orange-650 { color: #ff9500 !important; }
+.text-orange-650 { color: #c75a00 !important; }
 html.dark .text-orange-650 { color: #ff9f0a !important; }
 
-.text-amber-650 { color: #ffcc00 !important; }
+.text-amber-650 { color: #8f6200 !important; }
 html.dark .text-amber-650 { color: #ffd60a !important; }
 
-.text-blue-650 { color: #007aff !important; }
+.text-blue-650 { color: #0056b3 !important; }
 html.dark .text-blue-650 { color: #0a84ff !important; }
 
-.text-zinc-650 { color: #8e8e93 !important; }
+.text-zinc-650 { color: #3a3a3c !important; }
 html.dark .text-zinc-650 { color: #8e8e93 !important; }
 
-.text-slate-650 { color: #48484a !important; }
+.text-slate-650 { color: #1d1d1f !important; }
 html.dark .text-slate-650 { color: #aeaeb2 !important; }
 
-.text-slate-350 { color: #86868b !important; }
+.text-slate-350 { color: #3a3a3c !important; }
 html.dark .text-slate-350 { color: #aeaeb2 !important; }
 
-.text-slate-450 { color: #6e6e73 !important; }
+.text-slate-450 { color: #2c2c2e !important; }
 html.dark .text-slate-450 { color: #86868b !important; }

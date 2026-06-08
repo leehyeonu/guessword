@@ -656,7 +656,7 @@ export default function GamePage() {
               ) : (
                 <div className="py-6 flex flex-col items-center">
                   <Sparkles className="w-8 h-8 text-[var(--apple-blue)]/60 mb-3 animate-pulse" />
-                  <h3 className="text-slate-850 dark:text-slate-200 font-bold text-sm md:text-base">어떤 단어일지 유추해보세요!</h3>
+                  <h3 className="text-slate-900 dark:text-slate-200 font-bold text-sm md:text-base">어떤 단어일지 유추해보세요!</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-450 mt-1.5 max-w-[280px] leading-relaxed mb-4">
                     정답과 가장 가까운 단어를 적어보세요. 유사도가 높을수록 점수가 올라갑니다.
                   </p>
@@ -770,7 +770,7 @@ export default function GamePage() {
                           
                           <div className="flex flex-col items-end shrink-0">
                             <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">점수</span>
-                            <span className="font-bold font-mono text-sm md:text-base text-slate-850 dark:text-slate-100">
+                            <span className="font-bold font-mono text-sm md:text-base text-slate-900 dark:text-slate-100">
                               {item.score}
                             </span>
                           </div>
