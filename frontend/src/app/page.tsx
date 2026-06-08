@@ -285,13 +285,10 @@ export default function GamePage() {
     };
 
     loadStats();
-    statsTimer = setInterval(loadStats, 10000);
+    // 자동 폴링 제거 - Firestore 무료 한도 절감
 
     return () => {
       isMounted = false;
-      if (statsTimer) {
-        clearInterval(statsTimer);
-      }
     };
   }, [gameId]);
 
