@@ -1,145 +1,106 @@
 @import "tailwindcss";
 
 :root {
-  /* 라이트모드 (기본값) */
-  --background: #f8fafc; /* Slate 50 */
-  --foreground: #0f172a; /* Slate 900 */
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(99, 102, 241, 0.12);
-  --glass-hover: rgba(255, 255, 255, 0.85);
-  --glass-focus: rgba(255, 255, 255, 0.95);
-  --glow-1: radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, rgba(168, 85, 247, 0.2) 100%);
-  --glow-2: radial-gradient(circle, rgba(236, 72, 153, 0.3) 0%, rgba(59, 130, 246, 0.2) 100%);
-  --glow-opacity: 0.25;
+  /* Apple System Light Palette */
+  --background: #f2f2f7;      /* iOS Grouped Background Light */
+  --foreground: #000000;      /* Primary Label Light */
+  --foreground-secondary: rgba(60, 60, 67, 0.6);   /* Secondary Label Light */
+  --foreground-tertiary: rgba(60, 60, 67, 0.3);    /* Tertiary Label Light */
+  
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-hover: rgba(255, 255, 255, 0.9);
+  --glass-focus: #ffffff;
+  
+  --apple-blue: #007aff;
+  --apple-blue-hover: #0063cc;
+  --apple-red: #ff3b30;
+  --apple-red-hover: #e02d24;
+  --apple-orange: #ff9500;
+  --apple-green: #34c759;
+  --apple-gray-btn: rgba(120, 120, 128, 0.08);
+  --apple-gray-btn-hover: rgba(120, 120, 128, 0.16);
+  
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
 }
 
 :root.dark,
 html.dark {
-  /* 다크모드 */
-  --background: #020617; /* Slate 950 */
-  --foreground: #f8fafc; /* Slate 50 */
-  --glass-bg: rgba(255, 255, 255, 0.03);
+  /* Apple System Dark Palette */
+  --background: #000000;      /* True Black Background */
+  --foreground: #ffffff;      /* Primary Label Dark */
+  --foreground-secondary: rgba(235, 235, 245, 0.6);  /* Secondary Label Dark */
+  --foreground-tertiary: rgba(235, 235, 245, 0.3);   /* Tertiary Label Dark */
+  
+  --glass-bg: rgba(28, 28, 30, 0.7);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-hover: rgba(255, 255, 255, 0.06);
-  --glass-focus: rgba(255, 255, 255, 0.08);
-  --glow-1: radial-gradient(circle, rgba(99, 102, 241, 0.8) 0%, rgba(168, 85, 247, 0.4) 100%);
-  --glow-2: radial-gradient(circle, rgba(236, 72, 153, 0.6) 0%, rgba(59, 130, 246, 0.4) 100%);
-  --glow-opacity: 0.12;
+  --glass-hover: rgba(44, 44, 46, 0.8);
+  --glass-focus: #1c1c1e;
+  
+  --apple-blue: #0a84ff;
+  --apple-blue-hover: #2693ff;
+  --apple-red: #ff453a;
+  --apple-red-hover: #ff6961;
+  --apple-orange: #ff9f0a;
+  --apple-green: #30d158;
+  --apple-gray-btn: rgba(120, 120, 128, 0.2);
+  --apple-gray-btn-hover: rgba(120, 120, 128, 0.3);
+  
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.45);
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Compact Text", system-ui, sans-serif;
   overflow-x: hidden;
   min-height: 100vh;
   position: relative;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  letter-spacing: -0.011em;
 }
 
-/* Premium Animated Liquid Background Containers */
-.bg-glow-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  z-index: -20;
-  pointer-events: none;
-}
-
-.bg-glow-1,
-.bg-glow-2 {
-  position: absolute;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  filter: blur(140px);
-  opacity: var(--glow-opacity);
-}
-
-.bg-glow-1 {
-  background: var(--glow-1);
-  top: -10%;
-  left: -10%;
-  animation: float-bg-1 25s infinite alternate ease-in-out;
-}
-
-.bg-glow-2 {
-  background: var(--glow-2);
-  bottom: -10%;
-  right: -10%;
-  animation: float-bg-2 30s infinite alternate ease-in-out;
-}
-
-@media (max-width: 768px) {
-  .bg-glow-1,
-  .bg-glow-2 {
-    width: 300px;
-    height: 300px;
-    filter: blur(80px);
-  }
-}
-
-@keyframes float-bg-1 {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  50% {
-    transform: translate(100px, 80px) scale(1.1);
-  }
-  100% {
-    transform: translate(-50px, 150px) scale(0.9);
-  }
-}
-
-@keyframes float-bg-2 {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  50% {
-    transform: translate(-120px, -60px) scale(0.85);
-  }
-  100% {
-    transform: translate(80px, -120px) scale(1.15);
-  }
-}
-
-/* Liquid Glass Component Utility */
+/* iOS/macOS System Material Panel Utility (Glassmorphism) */
 .liquid-glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid var(--glass-border);
-  box-shadow: 
-    0 8px 32px 0 rgba(0, 0, 0, 0.15),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  border: 0.5px solid var(--glass-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+:root.dark .liquid-glass,
+html.dark .liquid-glass {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 .liquid-glass-interactive {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .liquid-glass-interactive:hover {
   background: var(--glass-hover);
-  border-color: rgba(99, 102, 241, 0.25);
-  box-shadow: 
-    0 12px 40px 0 rgba(0, 0, 0, 0.2),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.08);
+  border-color: rgba(120, 120, 128, 0.2);
 }
 
 .liquid-glass-interactive:focus-within {
   background: var(--glass-focus);
-  border-color: rgba(99, 102, 241, 0.35);
-  box-shadow: 
-    0 0 0 2px rgba(99, 102, 241, 0.15),
-    0 12px 40px 0 rgba(0, 0, 0, 0.25);
+  border-color: var(--apple-blue);
+  box-shadow: 0 0 0 1.5px var(--apple-blue), 0 4px 24px rgba(0, 0, 0, 0.04);
 }
 
-/* Premium Custom Scrollbars */
+:root.dark .liquid-glass-interactive:focus-within,
+html.dark .liquid-glass-interactive:focus-within {
+  box-shadow: 0 0 0 1.5px var(--apple-blue), 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* Thin Apple iOS style Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -147,28 +108,28 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  transition: background 0.3s ease;
+  background: var(--scrollbar-thumb);
+  border-radius: 10px;
+  transition: background-color 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--scrollbar-thumb-hover);
 }
 
-/* Shake animation for input errors */
+/* iOS Error Shake Animation */
 @keyframes shake-anim {
   0%, 100% {
     transform: translateX(0);
   }
   20%, 60% {
-    transform: translateX(-6px);
+    transform: translateX(-5px);
   }
   40%, 80% {
-    transform: translateX(6px);
+    transform: translateX(5px);
   }
 }
 
 .shake-element {
-  animation: shake-anim 0.4s ease-in-out;
+  animation: shake-anim 0.3s ease-in-out;
 }
