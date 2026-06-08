@@ -518,7 +518,7 @@ export default function GamePage() {
   const activeScore = currentGuess ? currentGuess.score : 0;
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-between p-4 md:p-8 max-w-5xl mx-auto z-10 relative">
+    <main className="min-h-dvh w-full max-w-5xl mx-auto flex flex-col items-center justify-start px-3 py-3 sm:px-4 md:px-8 md:py-6 z-10 relative overflow-x-hidden">
       
       {/* 정답 축하 콘페티 */}
       {isGameWon && <Confetti />}
@@ -531,33 +531,33 @@ export default function GamePage() {
       />
 
       {/* 헤더 (Apple-style Clean Header) */}
-      <header className="w-full flex flex-col sm:flex-row items-center justify-between py-3.5 gap-4 sm:gap-2 border-b border-slate-200/60 dark:border-zinc-800/80 mb-6">
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <h1 className="font-bold text-lg md:text-xl tracking-tight text-slate-900 dark:text-white">
+      <header className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-3 border-b border-slate-200/60 dark:border-zinc-800/80 mb-4 md:mb-6">
+        <div className="flex min-w-0 items-center justify-between gap-2 sm:justify-start">
+          <h1 className="min-w-0 truncate font-bold text-lg md:text-xl tracking-normal text-slate-900 dark:text-white">
             GUESSKOREAN
           </h1>
           {nickname && (
-            <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--apple-gray-btn)] text-slate-650 dark:text-slate-350 shrink-0">
+            <span className="max-w-[120px] truncate text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--apple-gray-btn)] text-slate-650 dark:text-slate-350 shrink-0">
               {nickname}
             </span>
           )}
         </div>
 
         {/* 설정 및 보조 기능 */}
-        <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end">
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
           {globalBestScore > 0 && (
             <div 
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 dark:bg-red-500/15 text-red-650 dark:text-red-400 text-[11px] font-semibold"
+              className="min-w-0 flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 py-2 sm:py-1.5 rounded-lg bg-red-500/10 dark:bg-red-500/15 text-red-650 dark:text-red-400 text-[11px] font-semibold"
               title="전체 최고 근접 점수"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 dark:bg-red-400 animate-pulse shrink-0"></span>
-              <span>최고 근접: {globalBestScore}점</span>
+              <span className="truncate">최고 근접: {globalBestScore}점</span>
             </div>
           )}
 
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer transition active:scale-95 border-none shadow-none"
+            className="h-10 w-10 shrink-0 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer transition active:scale-95 border-none shadow-none flex items-center justify-center"
             title={theme === "light" ? "다크 모드로 전환" : "라이트 모드로 전환"}
           >
             {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
@@ -565,7 +565,7 @@ export default function GamePage() {
 
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2.5 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer transition active:scale-95 border-none shadow-none"
+            className="h-10 w-10 shrink-0 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer transition active:scale-95 border-none shadow-none flex items-center justify-center"
             title="소리 토글"
           >
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
@@ -573,7 +573,7 @@ export default function GamePage() {
 
           <button
             onClick={() => setIsTutorialOpen(true)}
-            className="p-2.5 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer transition active:scale-95 border-none shadow-none"
+            className="h-10 w-10 shrink-0 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer transition active:scale-95 border-none shadow-none flex items-center justify-center"
             title="도움말"
           >
             <HelpCircle className="w-4 h-4" />
@@ -582,13 +582,13 @@ export default function GamePage() {
       </header>
 
       {/* 메인 화면 배치 */}
-      <div className="w-full flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start my-auto py-2">
+      <div className="w-full flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start py-1 sm:py-2">
         
         {/* 플레이어 조작 보드 */}
-        <div className="lg:col-span-2 flex flex-col items-center justify-center relative w-full">
+        <div className="lg:col-span-2 flex flex-col items-center relative w-full min-w-0">
           
           {/* 메인 조작 패널 */}
-          <div className="liquid-glass w-full rounded-2xl p-5 sm:p-6 md:p-8 flex flex-col items-center relative overflow-hidden mb-6">
+          <div className="liquid-glass w-full max-w-xl lg:max-w-none rounded-2xl p-4 sm:p-6 md:p-8 flex flex-col items-center relative overflow-hidden mb-5 md:mb-6">
             
             {/* 승리 팝업 오버레이 (Apple Modal Style) */}
             <AnimatePresence>
@@ -622,7 +622,7 @@ export default function GamePage() {
             </AnimatePresence>
 
             {/* 현재 추측 결과 렌더링 */}
-            <div className="w-full flex flex-col items-center mb-6 text-center">
+            <div className="w-full flex flex-col items-center mb-5 sm:mb-6 text-center">
               {currentGuess ? (
                 <motion.div
                   key={currentGuess.word}
@@ -630,49 +630,49 @@ export default function GamePage() {
                   animate={{ scale: 1, opacity: 1 }}
                   className="w-full"
                 >
-                  <span className="text-[10px] text-slate-500 dark:text-slate-450 tracking-wider font-semibold uppercase">최근 입력 단어</span>
-                  <div className="flex items-center justify-center gap-2 my-1.5">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight truncate max-w-[200px] sm:max-w-none">{currentGuess.word}</h2>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-450 tracking-normal font-semibold uppercase">최근 입력 단어</span>
+                  <div className="flex max-w-full items-center justify-center gap-2 my-1.5">
+                    <h2 className="min-w-0 max-w-full truncate text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-normal">{currentGuess.word}</h2>
                     <Flame className={`w-5 h-5 ${getScoreIconColor(currentGuess.score)}`} />
                   </div>
                   
                   <div className="mt-3 flex flex-col items-center justify-center">
-                    <span className="text-[9px] text-slate-500 dark:text-slate-450 font-bold uppercase tracking-widest">유사도 점수</span>
-                    <div className="text-4xl sm:text-5xl font-extrabold font-mono tracking-tight text-slate-900 dark:text-white my-0.5">
+                    <span className="text-[9px] text-slate-500 dark:text-slate-450 font-bold uppercase tracking-normal">유사도 점수</span>
+                    <div className="text-4xl sm:text-5xl font-extrabold font-mono tracking-normal text-slate-900 dark:text-white my-0.5 leading-none">
                       {currentGuess.score}
                       <span className="text-base sm:text-lg font-bold ml-0.5 text-slate-500 dark:text-slate-450 font-mono">/ 100</span>
                     </div>
                     
                     <div className="mt-2.5 flex flex-col items-center gap-3">
                       {currentGuess.score >= 90 ? (
-                        <span className="px-3 py-1 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-650 dark:bg-red-500/15 dark:text-red-400 uppercase tracking-wider animate-pulse">
+                        <span className="px-3 py-1 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-650 dark:bg-red-500/15 dark:text-red-400 uppercase tracking-normal animate-pulse">
                           정답이 코앞에 있습니다!
                         </span>
                       ) : currentGuess.score >= 70 ? (
-                        <span className="px-3 py-1 rounded-lg text-[10px] font-bold bg-orange-500/10 text-orange-650 dark:bg-orange-500/15 dark:text-orange-400 uppercase tracking-wider">
+                        <span className="px-3 py-1 rounded-lg text-[10px] font-bold bg-orange-500/10 text-orange-650 dark:bg-orange-500/15 dark:text-orange-400 uppercase tracking-normal">
                           매우 유사함 (근접 순위권)
                         </span>
                       ) : currentGuess.score >= 50 ? (
-                        <span className="px-3 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/10 text-amber-650 dark:bg-amber-500/15 dark:text-amber-400 uppercase tracking-wider">
+                        <span className="px-3 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/10 text-amber-650 dark:bg-amber-500/15 dark:text-amber-400 uppercase tracking-normal">
                           따뜻함 (상위 1000위 이내)
                         </span>
                       ) : currentGuess.score >= 30 ? (
-                        <span className="px-3 py-1 rounded-lg text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 uppercase tracking-wider">
+                        <span className="px-3 py-1 rounded-lg text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 uppercase tracking-normal">
                           약간 연관 있음
                         </span>
                       ) : (
-                        <span className="px-3 py-1 rounded-lg text-[10px] font-medium bg-slate-500/10 text-slate-650 dark:bg-slate-500/15 dark:text-slate-400 uppercase tracking-wider">
+                        <span className="px-3 py-1 rounded-lg text-[10px] font-medium bg-slate-500/10 text-slate-650 dark:bg-slate-500/15 dark:text-slate-400 uppercase tracking-normal">
                           연관성 없음
                         </span>
                       )}
                       
-                      <div className="flex items-center gap-3 text-[10px] text-slate-650 dark:text-slate-350 font-semibold bg-[var(--apple-gray-btn)] px-3 py-1.5 rounded-lg">
-                        <div className="flex items-center gap-1">
+                      <div className="w-full max-w-[320px] flex flex-col sm:flex-row sm:items-center sm:justify-center gap-1.5 sm:gap-3 text-[10px] text-slate-650 dark:text-slate-350 font-semibold bg-[var(--apple-gray-btn)] px-3 py-2 sm:py-1.5 rounded-lg">
+                        <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                           <span className="w-1.5 h-1.5 rounded-full bg-[var(--apple-blue)]"></span>
                           <span>내 최고: <strong className="text-slate-900 dark:text-white font-bold">{localBestScore}점</strong></span>
                         </div>
-                        <div className="w-[1px] h-3 bg-slate-300 dark:bg-zinc-700" />
-                        <div className="flex items-center gap-1">
+                        <div className="hidden sm:block w-[1px] h-3 bg-slate-300 dark:bg-zinc-700" />
+                        <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                           <span>전체 최고: <strong className="text-slate-900 dark:text-white font-bold">{globalBestScore}점</strong></span>
                         </div>
@@ -698,7 +698,7 @@ export default function GamePage() {
             </div>
 
             {/* 추측 입력 폼 (Apple Messages Style Input) */}
-            <form onSubmit={handleGuessSubmit} className="w-full relative mt-4">
+            <form onSubmit={handleGuessSubmit} className="w-full relative mt-3 sm:mt-4">
               <div className="relative flex items-center">
                 <input
                   ref={inputRef}
@@ -707,12 +707,12 @@ export default function GamePage() {
                   value={guessInput}
                   onChange={(e) => setGuessInput(e.target.value)}
                   disabled={isLoading || isGameWon}
-                  className={`w-full pl-4 pr-14 py-3 rounded-xl text-slate-900 dark:text-white bg-[rgba(120,120,128,0.06)] dark:bg-[rgba(120,120,128,0.14)] placeholder-slate-400 dark:placeholder-slate-500 focus:placeholder-slate-300 dark:focus:placeholder-slate-600 outline-none text-xs sm:text-sm md:text-base disabled:opacity-50 transition-all border-none focus:ring-1.5 focus:ring-[var(--apple-blue)] ${shouldShakeInput ? "shake-element" : ""}`}
+                  className={`w-full pl-4 pr-14 py-3 rounded-xl text-slate-900 dark:text-white bg-[rgba(120,120,128,0.06)] dark:bg-[rgba(120,120,128,0.14)] placeholder-slate-400 dark:placeholder-slate-500 focus:placeholder-slate-300 dark:focus:placeholder-slate-600 outline-none text-sm md:text-base disabled:opacity-50 transition-all border-none focus:ring-1.5 focus:ring-[var(--apple-blue)] ${shouldShakeInput ? "shake-element" : ""}`}
                 />
                 <button
                   type="submit"
                   disabled={isLoading || isGameWon || !guessInput.trim()}
-                  className="absolute right-2 px-3 py-1.5 rounded-lg bg-[var(--apple-blue)] hover:bg-[var(--apple-blue-hover)] text-white cursor-pointer disabled:opacity-20 transition-all duration-150 active:scale-95 border-none shadow-sm flex items-center justify-center"
+                  className="absolute right-1.5 top-1/2 h-9 w-9 -translate-y-1/2 rounded-lg bg-[var(--apple-blue)] hover:bg-[var(--apple-blue-hover)] text-white cursor-pointer disabled:opacity-20 transition-all duration-150 active:scale-95 border-none shadow-sm flex items-center justify-center"
                 >
                   {isLoading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -725,16 +725,16 @@ export default function GamePage() {
           </div>
 
           {/* 시도 기록 리스트 */}
-          <div className="w-full flex flex-col mb-4 min-h-[220px]">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2 mb-3">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
+          <div className="w-full max-w-xl lg:max-w-none flex flex-col mb-4 min-h-[220px]">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 dark:border-zinc-800 pb-2.5 mb-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+                <div className="flex min-w-0 items-center gap-1.5">
                   <ListFilter className="w-4 h-4 text-slate-500" />
-                  <h3 className="text-xs md:text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-450">내 시도 목록</h3>
+                  <h3 className="text-xs md:text-sm font-semibold uppercase tracking-normal text-slate-500 dark:text-slate-450 whitespace-nowrap">내 시도 목록</h3>
                 </div>
                 
                 {/* 정렬 전환 탭 (Apple Segmented Control Style) */}
-                <div className="flex items-center rounded-lg bg-[rgba(120,120,128,0.08)] dark:bg-[rgba(120,120,128,0.2)] p-0.5 text-[10px] font-medium text-slate-650 dark:text-slate-350">
+                <div className="flex shrink-0 items-center rounded-lg bg-[rgba(120,120,128,0.08)] dark:bg-[rgba(120,120,128,0.2)] p-0.5 text-[10px] font-medium text-slate-650 dark:text-slate-350">
                   <button
                     onClick={() => setHistorySortOrder("score")}
                     className={`px-2.5 py-1 rounded-md cursor-pointer transition-all duration-150 text-[10px] ${
@@ -758,14 +758,14 @@ export default function GamePage() {
                 </div>
               </div>
               
-              <span className="text-[10px] text-slate-500 font-bold flex items-center gap-2">
-                {nickname && <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--apple-gray-btn)] text-slate-650 dark:text-slate-350 font-semibold">{nickname}</span>}
-                <span>시도 횟수: <strong className="text-slate-800 dark:text-white font-bold">{history.length}</strong></span>
+              <span className="text-[10px] text-slate-500 font-bold flex min-w-0 items-center gap-2 sm:justify-end">
+                {nickname && <span className="max-w-[110px] truncate text-[9px] px-1.5 py-0.5 rounded bg-[var(--apple-gray-btn)] text-slate-650 dark:text-slate-350 font-semibold">{nickname}</span>}
+                <span className="whitespace-nowrap">시도 횟수: <strong className="text-slate-800 dark:text-white font-bold">{history.length}</strong></span>
               </span>
             </div>
 
             {history.length > 0 ? (
-              <div className="w-full max-h-[260px] overflow-y-auto pr-1 space-y-2.5">
+              <div className="w-full max-h-none overflow-visible pr-0 space-y-2.5 sm:max-h-[360px] sm:overflow-y-auto sm:pr-1">
                 <AnimatePresence initial={false}>
                   {getSortedHistory().map((item) => {
                     const tryNumber = history.findIndex((h) => h.word === item.word) + 1;
@@ -775,20 +775,20 @@ export default function GamePage() {
                         initial={{ opacity: 0, x: -5 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 5 }}
-                        className={`liquid-glass p-3 rounded-xl flex items-center justify-between border transition-all ${getScoreColor(
+                        className={`liquid-glass p-3 sm:p-3.5 rounded-xl flex items-center justify-between gap-3 border transition-all min-w-0 ${getScoreColor(
                           item.score
                         )}`}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold font-mono bg-[var(--apple-gray-btn)] border-none w-6 h-6 rounded-md flex items-center justify-center">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold font-mono bg-[var(--apple-gray-btn)] border-none w-7 h-7 sm:w-6 sm:h-6 rounded-md flex items-center justify-center shrink-0">
                             #{tryNumber}
                           </span>
-                          <span className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm md:text-base tracking-wide truncate max-w-[100px] sm:max-w-none">
+                          <span className="min-w-0 font-semibold text-slate-900 dark:text-white text-sm md:text-base tracking-normal truncate">
                             {item.word}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
                           <div className="hidden sm:flex flex-col items-end text-[9px] leading-tight">
                             <span className="text-slate-500">코사인 유사도</span>
                             <span className="font-mono text-slate-600 dark:text-slate-400 font-semibold">
@@ -796,8 +796,8 @@ export default function GamePage() {
                             </span>
                           </div>
                           
-                          <div className="flex flex-col items-end shrink-0">
-                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">점수</span>
+                          <div className="flex flex-col items-end shrink-0 min-w-[52px]">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-normal">점수</span>
                             <span className="font-bold font-mono text-sm md:text-base text-slate-900 dark:text-slate-100">
                               {item.score}
                             </span>
@@ -819,7 +819,7 @@ export default function GamePage() {
             {/* 이전 초기화된 시도 기록 (모아보기) */}
             {pastSessions.length > 0 && (
               <div className="mt-6 pt-5 border-t border-slate-200 dark:border-zinc-800 w-full">
-                <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-450 mb-3 flex items-center justify-between">
+                <h4 className="text-[11px] font-bold uppercase tracking-normal text-slate-500 dark:text-slate-450 mb-3 flex items-center justify-between">
                   <span>이전 시도 기록 ({pastSessions.length}개 세션)</span>
                   <button 
                     onClick={() => {
@@ -828,7 +828,7 @@ export default function GamePage() {
                         localStorage.removeItem("guessword_past_sessions");
                       }
                     }}
-                    className="text-[9px] text-red-500 hover:text-red-600 bg-transparent border-none cursor-pointer p-0 font-semibold uppercase tracking-wider"
+                    className="text-[9px] text-red-500 hover:text-red-600 bg-transparent border-none cursor-pointer p-0 font-semibold uppercase tracking-normal"
                   >
                     목록 전체 삭제
                   </button>

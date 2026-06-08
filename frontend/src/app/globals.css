@@ -77,7 +77,7 @@ body {
   min-height: 100vh;
   position: relative;
   transition: background-color 0.25s ease, color 0.25s ease;
-  letter-spacing: -0.011em;
+  letter-spacing: 0;
 }
 
 /* iOS/macOS System Material Panel Utility (Glassmorphism) */

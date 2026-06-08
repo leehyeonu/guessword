@@ -41,7 +41,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
               <div className="p-2 rounded-lg bg-[var(--apple-gray-btn)] text-[var(--apple-blue)] border-none">
                 <BookOpen className="w-5 h-5" />
               </div>
-              <h2 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+              <h2 className="text-base sm:text-lg font-bold tracking-normal text-slate-900 dark:text-white">
                 GuessKorean 플레이 가이드 🎮
               </h2>
             </div>

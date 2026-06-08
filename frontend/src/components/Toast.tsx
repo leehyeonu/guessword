@@ -34,7 +34,7 @@ export default function Toast({ message, isOpen, onClose, duration = 3000 }: Toa
           >
             <div className="flex items-center gap-2.5">
               <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 shrink-0" />
-              <span className="text-xs md:text-sm font-semibold tracking-tight leading-tight">
+              <span className="text-xs md:text-sm font-semibold tracking-normal leading-tight">
                 {message}
               </span>
             </div>

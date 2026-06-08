@@ -96,7 +96,7 @@ export default function ClearTicker({ userNickname }: ClearTickerProps) {
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2.5 mb-3">
         <div className="flex items-center gap-1.5 text-[var(--apple-blue)]">
           <Award className="w-4 h-4 text-[var(--apple-blue)] animate-pulse" />
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">실시간 클리어 현황</h4>
+          <h4 className="text-xs font-bold uppercase tracking-normal text-slate-800 dark:text-slate-200">실시간 클리어 현황</h4>
         </div>
       </div>
 
