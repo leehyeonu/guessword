@@ -1,8 +1,7 @@
 "use client";
 
-import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Check, HelpCircle, Flame, Target } from "lucide-react";
+import { BookOpen, Check, ExternalLink, Flame, HelpCircle, Target } from "lucide-react";
 
 interface TutorialModalProps {
   isOpen: boolean;
@@ -79,8 +78,17 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                 <div>
                   <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-0.5">3. 붉은 빛이 들어오면 찬스!</h4>
                   <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                    정답과 밀접한 상위 1,000위 단어에 진입하면 50점 이상을 받고, 75점 이상은 근접 순위권으로 평가됩니다.
+                    정답과 가까운 단어일수록 점수가 올라갑니다. 상위 1,000개 유사어에 들면 50점 이상, 75점 이상이면 매우 근접한 단서입니다.
                   </p>
+                  <a
+                    href="https://instagram.com/0x.hw_81"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex items-center gap-2 text-[11px] sm:text-xs font-semibold text-[var(--apple-blue)] dark:text-[var(--apple-blue)] hover:underline"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    @0x.hw_81
+                  </a>
                 </div>
               </div>
             </div>
