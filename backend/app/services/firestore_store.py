@@ -11,6 +11,7 @@ class FirestoreStore:
     def __init__(self):
         self.client = None
         self.firestore = None
+        self.FieldFilter = None
         self._init_client()
 
     @property
@@ -21,6 +22,7 @@ class FirestoreStore:
         try:
             import firebase_admin
             from firebase_admin import credentials, firestore
+            from google.cloud.firestore_v1.base_query import FieldFilter
         except ImportError:
             logger.warning("firebase-admin 패키지가 없어 Firestore 기록 기능을 비활성화합니다.")
             return
@@ -47,6 +49,7 @@ class FirestoreStore:
                 app = firebase_admin.initialize_app(cred, app_options or None)
 
             self.firestore = firestore
+            self.FieldFilter = FieldFilter
             self.client = firestore.client(app)
             logger.info("Firestore Admin SDK 초기화 완료")
         except Exception as exc:
@@ -150,7 +153,7 @@ class FirestoreStore:
         try:
             docs = (
                 self.client.collection("closest_guesses")
-                .where("gameId", "==", game_id)
+                .where(filter=self.FieldFilter("gameId", "==", game_id))
                 .order_by("score", direction=self.firestore.Query.DESCENDING)
                 .limit(1)
                 .stream()
