@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Flame, 
@@ -941,8 +941,22 @@ export default function GamePage() {
 
         {/* 우측 실시간 피드 전광판 */}
         <div className="lg:col-span-1 w-full space-y-4">
-          <AttemptTicker userNickname={nickname} />
-          <ClearTicker userNickname={nickname} />
+          <AttemptTicker
+            userNickname={nickname}
+            attempts={attempts}
+            isLoading={isStatsLoading}
+            isRefreshing={isStatsRefreshing}
+            onRefresh={() => loadAllStats(true)}
+            errorMsg={statsError}
+          />
+          <ClearTicker
+            userNickname={nickname}
+            clears={clears}
+            isLoading={isStatsLoading}
+            isRefreshing={isStatsRefreshing}
+            onRefresh={() => loadAllStats(true)}
+            errorMsg={statsError}
+          />
         </div>
 
       </div>
