@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity } from "lucide-react";
+import { Activity, RotateCw } from "lucide-react";
 
 interface AttemptItem {
   id: string;
@@ -32,49 +32,69 @@ const getApiUrl = () => {
 export default function AttemptTicker({ userNickname }: AttemptTickerProps) {
   const [attempts, setAttempts] = useState<AttemptItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  useEffect(() => {
-    let isMounted = true;
-    let statsTimer: ReturnType<typeof setInterval> | null = null;
+  const loadAttempts = useCallback(async (isManualRefresh = false) => {
+    const startTime = Date.now();
+    const maxRetries = 3;
+    const timeout = 8000; // 8초 타임아웃
+    let lastError: Error | null = null;
 
-    const loadAttempts = async () => {
+    if (isManualRefresh) {
+      setIsRefreshing(true);
+    } else if (!isLoading && !isRefreshing) {
+      return;
+    }
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(`${getApiUrl()}/api/game_stats?limit=5`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        const response = await fetch(`${getApiUrl()}/api/game_stats?limit=5`, {
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-          throw new Error("Game stats fetch failed");
+          throw new Error(`API 오류: ${response.status}`);
         }
+
         const data = (await response.json()) as GameStatsApiResponse;
         const loaded = (data.recent_attempts || []).map((a) => ({
-          id: a.id,
+          id: a.id || `attempt-${Math.random()}`,
           nickname: a.nickname || "누군가",
-          score: typeof a.score === "number" ? a.score : 0,
-          timestamp: a.timestamp ? new Date(a.timestamp) : new Date(),
+          score: typeof a.score === "number" ? Math.max(0, Math.min(100, a.score)) : 0,
+          timestamp: a.timestamp && !isNaN(new Date(a.timestamp).getTime()) 
+            ? new Date(a.timestamp) 
+            : new Date(),
         }));
 
-        if (isMounted) {
-          setAttempts(loaded);
-          setErrorMsg("");
-          setIsLoading(false);
-        }
+        setAttempts(loaded);
+        setErrorMsg("");
+        setIsLoading(false);
+        setIsRefreshing(false);
+        return;
       } catch (error) {
-        console.error("시도 현황 로드 실패:", error);
-        if (isMounted) {
-          setErrorMsg("시도 기록을 불러올 수 없습니다.");
-          setIsLoading(false);
+        lastError = error as Error;
+        console.warn(`시도 기록 로드 시도 ${attempt + 1}/${maxRetries} 실패:`, error);
+
+        if (attempt < maxRetries - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
         }
       }
-    };
+    }
 
+    // 모든 재시도 실패
+    console.error("시도 현황 로드 최종 실패:", lastError);
+    setErrorMsg(`기록을 불러올 수 없습니다 (${lastError?.message || '불명의 오류'})`);
+    setIsLoading(false);
+    setIsRefreshing(false);
+  }, [isLoading, isRefreshing]);
+
+  useEffect(() => {
     loadAttempts();
-    statsTimer = setInterval(loadAttempts, 10000);
-
-    return () => {
-      isMounted = false;
-      if (statsTimer) {
-        clearInterval(statsTimer);
-      }
-    };
   }, []);
 
   const formatTimeAgo = (date: Date) => {
@@ -102,9 +122,17 @@ export default function AttemptTicker({ userNickname }: AttemptTickerProps) {
     <div className="liquid-glass w-full rounded-2xl p-5 overflow-hidden text-slate-900 dark:text-white">
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2.5 mb-3">
         <div className="flex items-center gap-1.5 text-[var(--apple-green)]">
-          <Activity className="w-4 h-4 text-[var(--apple-green)] animate-pulse" />
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">실시간 시도 현황</h4>
+          <Activity className="w-4 h-4 text-[var(--apple-green)]" />
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">시도 현황</h4>
         </div>
+        <button
+          onClick={() => loadAttempts(true)}
+          disabled={isRefreshing || isLoading}
+          className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          title="새로고침"
+        >
+          <RotateCw className={`w-4 h-4 text-[var(--apple-green)] ${isRefreshing ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
