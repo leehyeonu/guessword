@@ -30,20 +30,20 @@ export default function Toast({ message, isOpen, onClose, duration = 3000 }: Toa
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 130, damping: 15 }}
-            className="liquid-glass flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-red-500/25 shadow-[0_12px_40px_rgba(0,0,0,0.5)] text-red-200"
+            className="liquid-glass flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl border border-red-500/20 shadow-lg text-red-600 dark:text-red-400"
           >
             <div className="flex items-center gap-2.5">
-              <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-              <span className="text-xs md:text-sm font-semibold tracking-wide leading-tight">
+              <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 shrink-0" />
+              <span className="text-xs md:text-sm font-semibold tracking-tight leading-tight">
                 {message}
               </span>
             </div>
             
             <button
               onClick={onClose}
-              className="p-1 rounded-lg hover:bg-white/5 text-slate-400 hover:text-slate-200 transition cursor-pointer"
+              className="p-1 rounded-md hover:bg-slate-200/50 dark:hover:bg-white/5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer border-none"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </motion.div>
         </div>

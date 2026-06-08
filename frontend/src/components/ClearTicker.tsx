@@ -73,11 +73,11 @@ export default function ClearTicker() {
   };
 
   return (
-    <div className="liquid-glass w-full rounded-3xl p-5 overflow-hidden text-slate-200">
-      <div className="flex items-center justify-between border-b border-white/5 pb-2.5 mb-3">
-        <div className="flex items-center gap-1.5 text-indigo-400">
-          <Award className="w-4 h-4 text-indigo-400 animate-pulse" />
-          <h4 className="text-xs font-bold uppercase tracking-wider">실시간 클리어 현황</h4>
+    <div className="liquid-glass w-full rounded-2xl p-5 overflow-hidden text-slate-900 dark:text-white">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2.5 mb-3">
+        <div className="flex items-center gap-1.5 text-[var(--apple-blue)]">
+          <Award className="w-4 h-4 text-[var(--apple-blue)] animate-pulse" />
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">실시간 클리어 현황</h4>
         </div>
       </div>
 
@@ -87,7 +87,7 @@ export default function ClearTicker() {
             데이터베이스 연결 중...
           </div>
         ) : errorMsg ? (
-          <div className="text-center text-xs text-red-400 bg-red-950/20 border border-red-500/10 p-4 rounded-2xl leading-relaxed">
+          <div className="text-center text-xs text-red-500 bg-red-500/10 border border-red-500/15 p-4 rounded-xl leading-relaxed">
             {errorMsg}
           </div>
         ) : clears.length > 0 ? (
@@ -98,20 +98,20 @@ export default function ClearTicker() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="flex items-center justify-between text-[11px] sm:text-xs p-2 sm:p-2.5 rounded-xl bg-white/5 border border-white/5"
+                className="flex items-center justify-between text-[11px] sm:text-xs p-2 sm:p-2.5 rounded-lg bg-[var(--apple-gray-btn)] border-none"
               >
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <Zap className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                  <span className="font-semibold text-slate-300 truncate">
-                    누군가 <span className="text-indigo-400 font-bold">정답</span>을 맞췄습니다!
+                  <Zap className="w-3.5 h-3.5 text-[var(--apple-blue)] shrink-0" />
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                    누군가 <span className="text-[var(--apple-blue)] font-bold">정답</span>을 맞췄습니다!
                   </span>
                 </div>
                 
                 <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                  <span className="text-[9px] sm:text-[10px] text-slate-400 font-mono bg-indigo-500/10 px-1.5 py-0.5 rounded-md text-indigo-300 font-bold">
+                  <span className="text-[9px] sm:text-[10px] text-[var(--apple-blue)] font-mono bg-blue-500/10 px-1.5 py-0.5 rounded-md font-bold">
                     {clear.attempts}회
                   </span>
-                  <span className="text-[8px] sm:text-[9px] text-slate-500 min-w-[34px] text-right">
+                  <span className="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 min-w-[34px] text-right">
                     {formatTimeAgo(clear.timestamp)}
                   </span>
                 </div>
