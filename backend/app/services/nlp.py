@@ -102,9 +102,16 @@ class FastTextWrapper:
             calibrated_score = 50.0 + 50.0 * (rank_ratio ** 2)
         else:
             # 2단계: 상위 1000위 바깥 (연관성 낮음/보통)
-            # 일반적인 비이웃 단어들의 코사인 유사도(보통 [0, 0.5] 범위)를 0.0 ~ 50.0점으로 스케일링
-            # 3차 스케일링을 사용하여 낮은 유사도 값을 0에 가깝게 강하게 누릅니다.
-            calibrated_score = 50.0 * (max(0.0, cos_sim) ** 3)
+            # 코사인 유사도(보통 [0, 0.5] 범위)를 0.0 ~ 50.0점으로 완만하게 스케일링
+            min_sim = 0.08
+            max_sim = 0.45
+            if cos_sim <= min_sim:
+                calibrated_score = 0.0
+            else:
+                # 0.08 ~ 0.45 범위를 0.0 ~ 1.0으로 정규화한 후 1.5차 스케일링을 적용하여 반응성 개선
+                normalized = (cos_sim - min_sim) / (max_sim - min_sim)
+                normalized = min(1.0, max(0.0, normalized))
+                calibrated_score = 50.0 * (normalized ** 1.5)
 
         # 점수를 0.0점에서 100.0점 사이로 고정
         calibrated_score = max(0.0, min(100.0, calibrated_score))
