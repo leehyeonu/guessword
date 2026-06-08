@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Check, ExternalLink, Flame, HelpCircle, Target } from "lucide-react";
+import { BookOpen, Check, Flame, HelpCircle, Target } from "lucide-react";
 
 interface TutorialModalProps {
   isOpen: boolean;
@@ -80,17 +80,28 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                   <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                     정답과 가까운 단어일수록 점수가 올라갑니다. 상위 1,000개 유사어에 들면 50점 이상, 75점 이상이면 매우 근접한 단서입니다.
                   </p>
-                  <a
-                    href="https://instagram.com/0x.hw_81"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-flex items-center gap-2 text-[11px] sm:text-xs font-semibold text-[var(--apple-blue)] dark:text-[var(--apple-blue)] hover:underline"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    @0x.hw_81
-                  </a>
                 </div>
               </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-2 text-[11px] sm:text-xs font-semibold text-[var(--apple-blue)] dark:text-[var(--apple-blue)]">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4"
+              >
+                <rect x="2.5" y="2.5" width="19" height="19" rx="5" />
+                <path d="M16 11.37a4 4 0 1 1-7.99.001A4 4 0 0 1 16 11.37z" />
+                <path d="M17.5 6.5h.01" />
+              </svg>
+              <a href="https://instagram.com/0x.hw_81" target="_blank" rel="noreferrer" className="hover:underline">
+                @0x.hw_81
+              </a>
             </div>
 
             {/* 확인 버튼 */}
