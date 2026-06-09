@@ -17,10 +17,17 @@ CACHE_TTL = 60  # 60초 캐싱
 class ScoreRequest(BaseModel):
     game_id: str = Field(..., description="정답 단어의 해시값 (Game ID)")
     attempts: int = Field(..., description="맞추기까지 걸린 시도 횟수")
+    nickname: str = Field("", description="익명 유저의 닉네임 (토큰 없을 때 사용)")
 
 @router.post("/score")
-def save_score(request: ScoreRequest, token: str):
-    nickname = verify_token(token)
+def save_score(request: ScoreRequest, token: str = None):
+    # 토큰이 있으면 인증된 닉네임 사용, 없으면 body의 닉네임 사용
+    if token:
+        nickname = verify_token(token)
+    elif request.nickname:
+        nickname = request.nickname.strip()[:20]
+    else:
+        raise HTTPException(status_code=400, detail="토큰 또는 닉네임이 필요합니다.")
     db = FirestoreStore().client
     if not db:
         raise HTTPException(status_code=500, detail="Database not available")

@@ -575,12 +575,19 @@ export default function GamePage() {
         setTargetWord(data.target_word);
         localStorage.setItem("malmatch_target_word", data.target_word);
         
-        // 정답을 맞췄을 때 /api/score 호출
-        if (authToken && gameId) {
-          fetch(`${getApiUrl()}/api/leaderboard/score?token=${authToken}`, {
+        // 정답을 맞췄을 때 리더보드 점수 등록
+        if (gameId) {
+          const scoreUrl = authToken 
+            ? `${getApiUrl()}/api/leaderboard/score?token=${authToken}`
+            : `${getApiUrl()}/api/leaderboard/score`;
+          fetch(scoreUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ game_id: gameId, attempts: updatedHistory.length })
+            body: JSON.stringify({ 
+              game_id: gameId, 
+              attempts: updatedHistory.length,
+              nickname: currentUser || anonNickname 
+            })
           }).catch(console.error);
         }
         
