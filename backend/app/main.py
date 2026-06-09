@@ -30,6 +30,18 @@ logging.basicConfig(
 logger = logging.getLogger("guessword.main")
 
 
+import threading
+
+def load_model_background(app, path):
+    try:
+        logger.info(f"🚀 [SYSTEM] FastText 모델 백그라운드 로드 시작: {path}")
+        from app.services.nlp import FastTextWrapper
+        app.state.nlp_wrapper = FastTextWrapper(path)
+        logger.info("🚀 [SYSTEM] FastText 모델 로드 성공! 이제 게임을 시작할 수 있습니다.")
+    except Exception as e:
+        logger.error(f"❌ [SYSTEM] FastText 로딩 중 에러 발생: {e}", exc_info=True)
+        app.state.nlp_wrapper = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -62,13 +74,9 @@ async def lifespan(app: FastAPI):
         logger.warning("⚠️ [SYSTEM] 모델 파일 'models/cc.ko.300.bin'을 찾을 수 없습니다. 경로를 확인해 주세요.")
         app.state.nlp_wrapper = None
     else:
-        try:
-            logger.info(f"🚀 [SYSTEM] FastText 모델 로드 시작: {model_path}")
-            app.state.nlp_wrapper = FastTextWrapper(model_path)
-            logger.info("🚀 [SYSTEM] FastText 모델 로드 성공")
-        except Exception as e:
-            logger.error(f"❌ [SYSTEM] FastText 로딩 중 에러 발생: {e}", exc_info=True)
-            app.state.nlp_wrapper = None
+        app.state.nlp_wrapper = "LOADING"
+        # FastAPI 서버가 즉시 응답할 수 있도록 백그라운드 스레드에서 무거운 모델 로딩
+        threading.Thread(target=load_model_background, args=(app, model_path), daemon=True).start()
 
     app.state.firestore_store = FirestoreStore()
     if not app.state.firestore_store.enabled:

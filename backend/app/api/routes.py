@@ -127,10 +127,15 @@ def get_game_stats(request: Request, game_id: str | None = None, limit: int = 5)
 def guess(request: Request, body: GuessRequest):
     """단어 추측 및 유사도 점수 반환"""
     nlp_wrapper = getattr(request.app.state, "nlp_wrapper", None)
+    if nlp_wrapper == "LOADING":
+        raise HTTPException(
+            status_code=503,
+            detail="서버가 구동 중이며 AI 모델을 메모리에 불러오는 중입니다. 잠시 후(약 1~2분) 다시 시도해 주세요."
+        )
     if nlp_wrapper is None:
         raise HTTPException(
             status_code=500,
-            detail="서버에 FastText 모델이 아직 로드되지 않았습니다."
+            detail="서버에 FastText 모델이 로드되지 않았습니다."
         )
 
     target = get_daily_target_word()
