@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Check, Flame, HelpCircle, Target } from "lucide-react";
+import { BookOpen, CalendarClock, Check, Flame, HelpCircle, Target, UserPlus } from "lucide-react";
 
 interface TutorialModalProps {
   isOpen: boolean;
@@ -79,6 +79,30 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                   <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-0.5">3. 붉은 빛이 들어오면 찬스!</h4>
                   <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                     정답과 가까운 단어일수록 점수가 올라갑니다. 상위 1,000개 유사어에 들면 50점 이상, 75점 이상이면 매우 근접한 단서입니다.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-[rgba(120,120,128,0.06)] dark:bg-[rgba(120,120,128,0.12)]">
+                <div className="p-1.5 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0">
+                  <CalendarClock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-0.5">4. 매일 새로운 단어</h4>
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                    정답 단어는 매일 자정(KST)에 자동으로 바뀝니다. 매일 새로운 도전에 참여하고, 적은 시도로 맞출수록 리더보드에서 높은 순위를 차지할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-[rgba(120,120,128,0.06)] dark:bg-[rgba(120,120,128,0.12)]">
+                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-0.5">5. 계정 없이도 OK</h4>
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                    로그인 없이 바로 플레이할 수 있습니다. 나중에 회원가입하면 익명 시절의 기록도 자동으로 계정에 연동됩니다.
                   </p>
                 </div>
               </div>
