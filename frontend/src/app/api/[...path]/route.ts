@@ -61,6 +61,9 @@ async function handleProxy(request: NextRequest, pathArray: string[]) {
 
         // 응답 헤더 복사
         const responseHeaders = new Headers(response.headers);
+        responseHeaders.set("x-debug-target-url", targetUrl);
+        responseHeaders.set("x-debug-has-token", hfToken ? "true" : "false");
+        responseHeaders.set("x-debug-token-len", hfToken ? hfToken.length.toString() : "0");
         
         // 브라우저로 응답 반환
         return new NextResponse(response.body, {
@@ -69,8 +72,18 @@ async function handleProxy(request: NextRequest, pathArray: string[]) {
             headers: responseHeaders,
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Proxy error:", error);
-        return NextResponse.json({ error: "Proxy server error" }, { status: 500 });
+        return NextResponse.json(
+            { error: "Proxy server error", detail: error.message }, 
+            { 
+                status: 500,
+                headers: {
+                    "x-debug-target-url": targetUrl,
+                    "x-debug-has-token": hfToken ? "true" : "false",
+                    "x-debug-token-len": hfToken ? hfToken.length.toString() : "0",
+                }
+            }
+        );
     }
 }

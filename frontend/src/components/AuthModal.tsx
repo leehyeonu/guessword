@@ -49,7 +49,15 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       } else {
         const text = await res.text();
         const snippet = text.replace(/<[^>]*>/g, "").slice(0, 120).trim();
-        throw new Error(`서버 응답 형식 오류 (상태 코드: ${res.status}, 형식: ${contentType})\n요약: ${snippet || "내용 없음"}`);
+        const debugUrl = res.headers.get("x-debug-target-url") || "알 수 없음";
+        const debugToken = res.headers.get("x-debug-has-token") || "알 수 없음";
+        const debugLen = res.headers.get("x-debug-token-len") || "0";
+        throw new Error(
+          `서버 응답 형식 오류 (상태 코드: ${res.status}, 형식: ${contentType})\n` +
+          `타겟 URL: ${debugUrl}\n` +
+          `토큰 감지: ${debugToken} (길이: ${debugLen})\n` +
+          `요약: ${snippet || "내용 없음"}`
+        );
       }
 
       if (!res.ok) {
@@ -147,9 +155,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-zinc-800 border-none outline-none text-slate-900 dark:text-white mb-2 focus:ring-2 focus:ring-[var(--apple-blue)] transition-shadow"
               />
 
-              <div className="h-6 mb-3">
+              <div className="min-h-[1.5rem] h-auto mb-3">
                 {errorMsg && (
-                  <span className="text-sm text-red-500 font-medium">{errorMsg}</span>
+                  <span className="text-[11px] sm:text-xs text-red-500 font-medium whitespace-pre-line block leading-relaxed">{errorMsg}</span>
                 )}
               </div>
               
