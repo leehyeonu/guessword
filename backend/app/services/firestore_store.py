@@ -166,41 +166,12 @@ class FirestoreStore:
             return 0
         except Exception as exc:
             if "requires an index" in str(exc):
-                logger.warning("⚠️ [DB_ERROR] Firestore 'closest_guesses' 컬렉션의 인덱스가 필요합니다. Firebase 콘솔에서 생성해주세요.")
+                logger.warning(f"⚠️ [DB_ERROR] Firestore 'closest_guesses' 컬렉션의 복합 인덱스가 필요합니다.\n🔥 아래 링크를 브라우저에 붙여넣어 인덱스를 생성해주세요:\n{exc}")
             else:
                 logger.warning("❌ [DB_ERROR] Firestore 최고 점수 조회 실패: %s", exc)
             return 0
 
-    def get_recent_clears(self, limit: int = 5) -> list[dict[str, Any]]:
-        if not self.enabled:
-            return []
 
-        try:
-            docs = (
-                self.client.collection("clears")
-                .order_by("timestamp", direction=self.firestore.Query.DESCENDING)
-                .limit(max(1, min(limit, 20)))
-                .stream()
-            )
-            return [self._serialize_clear(doc.id, doc.to_dict()) for doc in docs]
-        except Exception as exc:
-            logger.warning("❌ [DB_ERROR] Firestore 클리어 기록 조회 실패: %s", exc)
-            return []
-
-    def _serialize_clear(self, doc_id: str, data: dict[str, Any]) -> dict[str, Any]:
-        timestamp = data.get("timestamp")
-        if hasattr(timestamp, "isoformat"):
-            timestamp_value = timestamp.isoformat()
-        else:
-            timestamp_value = datetime.now(timezone.utc).isoformat()
-
-        return {
-            "id": doc_id,
-            "gameId": data.get("gameId", ""),
-            "attempts": int(data.get("attempts", 0) or 0),
-            "timestamp": timestamp_value,
-            "nickname": data.get("nickname", "누군가"),
-        }
 
     def get_recent_attempts(self, limit: int = 10) -> list[dict[str, Any]]:
         """최근 시도 기록 조회 (민감 정보 제외: 단어, IP, device 미반환)"""

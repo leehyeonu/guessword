@@ -16,16 +16,13 @@ export default function LeaderboardModal({ isOpen, onClose, currentUser }: Leade
   const [overallData, setOverallData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchLeaderboard(activeTab);
-    }
-  }, [isOpen, activeTab]);
-
   const fetchLeaderboard = async (tab: "daily" | "overall") => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leaderboard/${tab}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/leaderboard/${tab}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" }
+      });
       const data = await res.json();
       if (tab === "daily") {
         setDailyData(data.leaderboard || []);
@@ -38,6 +35,12 @@ export default function LeaderboardModal({ isOpen, onClose, currentUser }: Leade
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchLeaderboard(activeTab);
+    }
+  }, [isOpen, activeTab]);
 
   const renderRankIcon = (index: number) => {
     if (index === 0) return <Medal className="w-5 h-5 text-yellow-500" />;

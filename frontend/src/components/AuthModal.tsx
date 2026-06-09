@@ -67,27 +67,40 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="relative w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-slate-200 dark:border-zinc-800 overflow-hidden"
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-zinc-800">
-              <div className="flex gap-4">
+            <div className="flex flex-col border-b border-slate-100 dark:border-zinc-800">
+              <div className="flex items-center justify-between px-5 py-3">
+                <div className="text-sm font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
+                  계정
+                </div>
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex">
                 <button
                   onClick={() => { setIsLoginTab(true); setErrorMsg(""); }}
-                  className={`text-lg font-bold transition-colors ${isLoginTab ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-zinc-500"}`}
+                  className={`flex-1 py-3 text-[15px] font-bold transition-colors ${
+                    isLoginTab 
+                      ? "text-[var(--apple-blue)] border-b-2 border-[var(--apple-blue)] bg-blue-50/50 dark:bg-blue-900/10" 
+                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  }`}
                 >
                   로그인
                 </button>
                 <button
                   onClick={() => { setIsLoginTab(false); setErrorMsg(""); }}
-                  className={`text-lg font-bold transition-colors ${!isLoginTab ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-zinc-500"}`}
+                  className={`flex-1 py-3 text-[15px] font-bold transition-colors ${
+                    !isLoginTab 
+                      ? "text-[var(--apple-blue)] border-b-2 border-[var(--apple-blue)] bg-blue-50/50 dark:bg-blue-900/10" 
+                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  }`}
                 >
                   회원가입
                 </button>
               </div>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
             
             <form onSubmit={handleSubmit} className="p-5">

@@ -21,8 +21,8 @@ import {
 import TutorialModal from "@/components/TutorialModal";
 import Toast from "@/components/Toast";
 import Confetti from "@/components/Confetti";
-import ClearTicker from "@/components/ClearTicker";
 import AttemptTicker from "@/components/AttemptTicker";
+import LeaderboardTicker from "@/components/LeaderboardTicker";
 import AuthModal from "@/components/AuthModal";
 import LeaderboardModal from "@/components/LeaderboardModal";
 
@@ -33,23 +33,8 @@ interface AttemptItem {
   timestamp: Date;
 }
 
-interface ClearItem {
-  id: string;
-  gameId: string;
-  attempts: number;
-  timestamp: Date;
-  nickname: string;
-}
-
 interface GameStatsData {
   global_best_score: number;
-  recent_clears: Array<{
-    id: string;
-    gameId: string;
-    attempts: number;
-    timestamp: string;
-    nickname: string;
-  }>;
   recent_attempts: Array<{
     id: string;
     nickname: string;
@@ -81,7 +66,10 @@ const getApiUrl = () => {
 };
 
 const fetchGameStats = async (currentGameId: string) => {
-  const response = await fetch(`${getApiUrl()}/api/game_stats?game_id=${encodeURIComponent(currentGameId)}`);
+  const response = await fetch(`${getApiUrl()}/api/game_stats?game_id=${encodeURIComponent(currentGameId)}`, {
+    cache: "no-store",
+    headers: { "Cache-Control": "no-cache" }
+  });
   if (!response.ok) {
     throw new Error("Game stats fetch failed");
   }
@@ -111,7 +99,6 @@ export default function GamePage() {
 
   // 전체 통계 데이터 공유 상태
   const [attempts, setAttempts] = useState<AttemptItem[]>([]);
-  const [clears, setClears] = useState<ClearItem[]>([]);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [isStatsRefreshing, setIsStatsRefreshing] = useState(false);
   const [statsError, setStatsError] = useState("");
@@ -139,17 +126,6 @@ export default function GamePage() {
           : new Date(),
       }));
       setAttempts(parsedAttempts);
-
-      const parsedClears = (data.recent_clears || []).map((clear) => ({
-        id: clear.id || `clear-${Math.random()}`,
-        gameId: clear.gameId || "",
-        attempts: Math.max(1, clear.attempts || 1),
-        timestamp: clear.timestamp && !isNaN(new Date(clear.timestamp).getTime())
-          ? new Date(clear.timestamp)
-          : new Date(),
-        nickname: clear.nickname || "누군가",
-      }));
-      setClears(parsedClears);
     } catch (err) {
       console.error("랭킹 통계 로드 실패:", err);
       setStatsError("통계 기록을 불러오는 데 실패했습니다.");
@@ -261,7 +237,12 @@ export default function GamePage() {
       }, 10000);
       
       try {
-        const response = await fetch(`${getApiUrl()}/api/game_info`);
+        const response = await fetch(`${getApiUrl()}/api/game_info`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache"
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           if (data.game_id) {
@@ -530,6 +511,7 @@ export default function GamePage() {
           nickname: currentUser || anonNickname,
           attempt_count: history.length + 1,
         }),
+        cache: "no-store",
       });
 
       if (response.status === 429) {
@@ -684,22 +666,65 @@ export default function GamePage() {
       />
 
       {/* 헤더 (Apple-style Clean Header) */}
-      <header className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-3 border-b border-slate-200/60 dark:border-zinc-800/80 mb-4 md:mb-6">
-        <div className="flex min-w-0 items-center justify-between gap-2 sm:justify-start">
-          <h1 className="min-w-0 truncate font-bold text-lg md:text-xl tracking-normal text-slate-900 dark:text-white">
-            GUESSKOREAN
+      <header className="w-full flex items-center justify-between py-3 px-1 sm:px-2 border-b border-slate-200/60 dark:border-zinc-800/80 mb-4 md:mb-6">
+        
+        {/* 왼쪽: 로고 및 최고 점수 */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <h1 className="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white select-none">
+            GUESS<span className="text-[var(--apple-blue)]">KOR</span>
           </h1>
+          {globalBestScore > 0 && (
+            <div 
+              className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[10px] sm:text-[11px] font-semibold"
+              title="전체 최고 근접 점수"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+              <span className="truncate">최고 {globalBestScore}점</span>
+            </div>
+          )}
         </div>
 
-        {/* 설정 및 보조 기능 */}
-        <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
+        {/* 오른쪽: 툴바 및 유저 컨트롤 */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* 아이콘 툴바 */}
+          <div className="flex items-center gap-0.5 bg-[var(--apple-gray-btn)] dark:bg-slate-800 rounded-lg p-0.5">
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 sm:p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-white dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700 transition-all"
+              title={theme === "light" ? "다크 모드" : "라이트 모드"}
+            >
+              {theme === "light" ? <Moon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" /> : <Sun className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
+            </button>
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="p-1.5 sm:p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-white dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700 transition-all"
+              title={soundEnabled ? "소리 끄기" : "소리 켜기"}
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4 sm:w-[18px] sm:h-[18px]" /> : <VolumeX className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
+            </button>
+            <button
+              onClick={() => setIsTutorialOpen(true)}
+              className="p-1.5 sm:p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-white dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700 transition-all"
+              title="도움말"
+            >
+              <HelpCircle className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+            </button>
+            <button
+              onClick={() => setIsLeaderboardModalOpen(true)}
+              className="p-1.5 sm:p-2 rounded-md text-yellow-600 dark:text-yellow-500 hover:bg-white dark:hover:bg-slate-700 transition-all"
+              title="리더보드"
+            >
+              <Trophy className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+            </button>
+          </div>
+
+          {/* 유저 로그인/아웃 */}
           {currentUser ? (
-            <div className="flex items-center gap-1.5 px-3 h-10 rounded-lg bg-[var(--apple-gray-btn)]">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 max-w-[80px] truncate">{currentUser}</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-[var(--apple-gray-btn)] dark:bg-slate-800">
+              <span className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 max-w-[50px] sm:max-w-[80px] truncate">{currentUser}</span>
               <button 
                 onClick={handleLogout} 
-                className="text-[10px] font-semibold text-slate-400 hover:text-red-500 transition-colors"
-                title="로그아웃"
+                className="text-[10px] sm:text-[11px] font-semibold text-slate-400 hover:text-red-500 transition-colors shrink-0"
               >
                 로그아웃
               </button>
@@ -707,51 +732,11 @@ export default function GamePage() {
           ) : (
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="px-3 h-10 rounded-lg font-bold text-[11px] bg-[var(--apple-blue)] text-white hover:bg-[var(--apple-blue-hover)] transition-colors shrink-0"
+              className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg font-bold text-[11px] sm:text-xs bg-[var(--apple-blue)] text-white hover:bg-[var(--apple-blue-hover)] transition-colors shrink-0 shadow-sm"
             >
-              로그인 / 가입
+              로그인
             </button>
           )}
-          {globalBestScore > 0 && (
-            <div 
-              className="min-w-0 flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 py-2 sm:py-1.5 rounded-lg bg-red-500/10 dark:bg-red-500/15 text-red-650 dark:text-red-400 text-[11px] font-semibold"
-              title="전체 최고 근접 점수"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 dark:bg-red-400 animate-pulse shrink-0"></span>
-              <span className="truncate">최고 근접: {globalBestScore}점</span>
-            </div>
-          )}
-
-          <button
-            onClick={toggleTheme}
-            className="h-10 w-10 shrink-0 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer transition active:scale-95 border-none shadow-none flex items-center justify-center"
-            title={theme === "light" ? "다크 모드로 전환" : "라이트 모드로 전환"}
-          >
-            {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-          </button>
-
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="h-10 w-10 shrink-0 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer transition active:scale-95 border-none shadow-none flex items-center justify-center"
-            title="소리 토글"
-          >
-            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
-
-          <button
-            onClick={() => setIsTutorialOpen(true)}
-            className="h-10 w-10 shrink-0 rounded-lg bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer transition active:scale-95 border-none shadow-none flex items-center justify-center"
-            title="도움말"
-          >
-            <HelpCircle className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setIsLeaderboardModalOpen(true)}
-            className="h-10 w-10 shrink-0 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 dark:text-yellow-500 cursor-pointer transition active:scale-95 border-none shadow-none flex items-center justify-center"
-            title="리더보드"
-          >
-            <Trophy className="w-4 h-4" />
-          </button>
         </div>
       </header>
 
@@ -1057,7 +1042,6 @@ export default function GamePage() {
           </div>
         </div>
 
-        {/* 우측 실시간 피드 전광판 */}
         <div className="lg:col-span-1 w-full space-y-4">
           <AttemptTicker
             userNickname={currentUser || anonNickname}
@@ -1067,14 +1051,7 @@ export default function GamePage() {
             onRefresh={() => loadAllStats(true)}
             errorMsg={statsError}
           />
-          <ClearTicker
-            userNickname={currentUser || anonNickname}
-            clears={clears}
-            isLoading={isStatsLoading}
-            isRefreshing={isStatsRefreshing}
-            onRefresh={() => loadAllStats(true)}
-            errorMsg={statsError}
-          />
+          <LeaderboardTicker currentUser={currentUser || anonNickname} />
         </div>
 
       </div>

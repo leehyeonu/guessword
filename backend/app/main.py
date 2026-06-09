@@ -16,6 +16,7 @@ from app.api.auth import router as auth_router
 from app.api.leaderboard import router as leaderboard_router
 from app.services.firestore_store import FirestoreStore
 from app.services.nlp import FastTextWrapper
+from app.services.daily_word import get_words_list, get_daily_target_word
 
 # 기본 로깅 세팅 (KST 기준)
 from datetime import datetime, timezone, timedelta
@@ -35,6 +36,10 @@ async def lifespan(app: FastAPI):
     서버 구동 시 FastText 모델 로드하고, 종료 시 메모리 해제
     """
     logger.info("🚀 [SYSTEM] App 초기화 시작...")
+    
+    # 정답 단어 목록 해독 및 캐싱, 오늘의 단어 세팅
+    get_words_list()
+    get_daily_target_word()
 
     # 구동 환경에 따른 모델 파일 상대 경로 후보군
     candidate_paths = [
