@@ -117,7 +117,9 @@ def get_daily_target_word() -> str:
     
     state = get_daily_state(today_str)
     if state and "word" in state:
-        return state["word"]
+        word = state["word"]
+        logger.info(f"💡 [ADMIN] 오늘의 정답 단어는 '{word}' 입니다. (날짜: {today_str})")
+        return word
         
     # Fallback to deterministic
     words = get_words_list()
