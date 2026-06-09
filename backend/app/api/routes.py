@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.services.daily_word import get_daily_target_word
+
 router = APIRouter()
 
 # SlowAPI Limiter 인스턴스 (IP 기준)
@@ -82,10 +84,7 @@ def get_client_metadata(request: Request) -> tuple[str, str]:
 @router.get("/game_info", response_model=GameInfoResponse)
 def get_game_info(request: Request):
     """현재 세션의 고유 game_id(정답 해시) 조회"""
-    target = getattr(request.app.state, "target_word", "사과")
-    if not target:
-        target = "사과"
-        request.app.state.target_word = target
+    target = get_daily_target_word()
     
     return GameInfoResponse(game_id=get_game_id(target))
 
@@ -98,7 +97,7 @@ _game_stats_cache = {}
 @router.get("/game_stats", response_model=GameStatsResponse)
 def get_game_stats(request: Request, game_id: str | None = None, limit: int = 5):
     """공개 UI에 필요한 최소 통계만 백엔드 API를 통해 조회"""
-    target = getattr(request.app.state, "target_word", "사과") or "사과"
+    target = get_daily_target_word()
     current_game_id = game_id or get_game_id(target)
 
     # 캐시 확인 (game_id와 limit 기준)
@@ -140,10 +139,7 @@ def guess(request: Request, body: GuessRequest):
             detail="서버에 FastText 모델이 아직 로드되지 않았습니다."
         )
 
-    target = getattr(request.app.state, "target_word", "사과")
-    if not target:
-        target = "사과"
-        request.app.state.target_word = target
+    target = get_daily_target_word()
 
     # 자모 분리 방지를 위한 NFC 정규화
     guess = unicodedata.normalize('NFC', body.guess_word.strip())

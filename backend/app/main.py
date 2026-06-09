@@ -60,14 +60,7 @@ async def lifespan(app: FastAPI):
             logger.error(f"FastText 로딩 중 에러 발생: {e}", exc_info=True)
             app.state.nlp_wrapper = None
 
-    # 환경변수에서 정답 로드 (없으면 기본값 '사과')
-    env_target = os.getenv("TARGET_WORD", "").strip()
-    if env_target:
-        app.state.target_word = unicodedata.normalize('NFC', env_target)
-        logger.info(f"환경변수 정답 단어 적용 (NFC): {app.state.target_word}")
-    else:
-        app.state.target_word = "사과"
-        logger.info("TARGET_WORD 환경변수가 없어서 기본값 '사과'로 세팅함")
+    logger.info("정답 단어 관리는 daily_word 모듈에서 처리됩니다.")
 
     app.state.firestore_store = FirestoreStore()
     if not app.state.firestore_store.enabled:

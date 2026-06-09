@@ -72,8 +72,9 @@ interface PastSession {
 }
 
 const getApiUrl = () => {
-  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  return rawApiUrl.replace(/\/$/, "");
+  // 백엔드를 은닉하기 위해, 브라우저는 외부(HF)로 직접 요청하지 않고
+  // Next.js 본인 서버 내부의 프록시(/api/...)로 요청하도록 빈 문자열 반환
+  return "";
 };
 
 const fetchGameStats = async (currentGameId: string) => {
