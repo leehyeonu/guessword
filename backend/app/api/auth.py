@@ -27,7 +27,8 @@ class LoginRequest(BaseModel):
     password: str = Field(...)
 
 class MigrateRequest(BaseModel):
-    past_sessions: list
+    past_sessions: list = []
+    anon_nickname: str = Field("", description="이전 익명 닉네임 (예: 익명#O8RQ)")
 
 class AuthResponse(BaseModel):
     token: str
@@ -110,46 +111,121 @@ def login(request: LoginRequest):
     logger.info(f"🔐 [AUTH] 사용자 로그인 성공: '{request.nickname}'")
     return {"token": access_token, "nickname": request.nickname}
 
+def _rename_nickname_in_collection(db, collection_name: str, old_nickname: str, new_nickname: str) -> int:
+    """컬렉션 내의 문서들에서 nickname 필드를 변경합니다."""
+    from google.cloud.firestore_v1.base_query import FieldFilter
+    count = 0
+    try:
+        query = db.collection(collection_name).where(
+            filter=FieldFilter("nickname", "==", old_nickname)
+        )
+        docs = query.stream()
+        batch = db.batch()
+        batch_count = 0
+        for doc in docs:
+            batch.update(doc.reference, {"nickname": new_nickname})
+            count += 1
+            batch_count += 1
+            # Firestore batch는 최대 500개씩
+            if batch_count >= 400:
+                batch.commit()
+                batch = db.batch()
+                batch_count = 0
+        if batch_count > 0:
+            batch.commit()
+        if count > 0:
+            logger.info(f"🔄 [MIGRATE] '{collection_name}' 컬렉션에서 {count}개 문서 닉네임 변경 완료 ({old_nickname} → {new_nickname})")
+    except Exception as e:
+        logger.warning(f"⚠️ [MIGRATE] '{collection_name}' 닉네임 변경 중 오류: {e}")
+    return count
+
 @router.post("/migrate")
 def migrate_data(request: MigrateRequest, token: str):
     nickname = verify_token(token)
     db = FirestoreStore().client
     if not db:
         raise HTTPException(status_code=500, detail="데이터베이스 서버에 연결할 수 없습니다.")
+    
+    total_renamed = 0
+    anon_nick = request.anon_nickname.strip()
+    
+    # 1. 익명 닉네임이 있으면 Firestore의 모든 관련 컬렉션에서 닉네임 변경
+    if anon_nick and anon_nick != nickname:
+        logger.info(f"🔄 [MIGRATE] 익명 기록 마이그레이션 시작: '{anon_nick}' → '{nickname}'")
+        for collection in ["attempts", "clears", "closest_guesses"]:
+            total_renamed += _rename_nickname_in_collection(db, collection, anon_nick, nickname)
         
-    # past_sessions 배열 길이를 total_wins에 더합니다.
-    # 각 세션에서 시도했던 횟수를 total_attempts_played에 더합니다.
+        # daily_scores는 하위 컬렉션 구조이므로 별도 처리
+        # daily_scores/{game_id}/scores/{nickname} 형태
+        try:
+            daily_docs = db.collection("daily_scores").stream()
+            for game_doc in daily_docs:
+                score_ref = game_doc.reference.collection("scores").document(anon_nick)
+                score_snap = score_ref.get()
+                if score_snap.exists:
+                    score_data = score_snap.to_dict()
+                    score_data["nickname"] = nickname
+                    # 새 닉네임으로 문서 생성
+                    new_score_ref = game_doc.reference.collection("scores").document(nickname)
+                    new_snap = new_score_ref.get()
+                    if not new_snap.exists:
+                        new_score_ref.set(score_data)
+                        score_ref.delete()
+                        total_renamed += 1
+                        logger.info(f"🔄 [MIGRATE] daily_scores/{game_doc.id}/scores 닉네임 변경 완료")
+                    else:
+                        # 이미 해당 닉네임으로 기록이 있으면 익명 기록만 삭제
+                        score_ref.delete()
+        except Exception as e:
+            logger.warning(f"⚠️ [MIGRATE] daily_scores 닉네임 변경 중 오류: {e}")
+        
+        # 익명 users 문서 삭제 (log_guess에서 merge로 만들어진 것)
+        try:
+            anon_user_ref = db.collection("users").document(anon_nick)
+            anon_snap = anon_user_ref.get()
+            if anon_snap.exists:
+                anon_data = anon_snap.to_dict()
+                # password_hash가 없는 문서만 삭제 (진짜 익명 유저)
+                if not anon_data.get("password_hash"):
+                    anon_user_ref.delete()
+                    logger.info(f"🗑️ [MIGRATE] 익명 유저 문서 삭제: '{anon_nick}'")
+        except Exception as e:
+            logger.warning(f"⚠️ [MIGRATE] 익명 유저 문서 삭제 중 오류: {e}")
+    
+    # 2. past_sessions 통계 합산 (기존 로직)
     added_wins = len(request.past_sessions)
     added_attempts = sum(session.get("attemptsCount", 0) for session in request.past_sessions)
     
     doc_ref = db.collection("users").document(nickname)
     
-    @firestore.transactional
-    def update_user_stats(transaction, ref):
-        snapshot = ref.get(transaction=transaction)
-        if not snapshot.exists:
-            return
+    if added_wins > 0:
+        @firestore.transactional
+        def update_user_stats(transaction, ref):
+            snapshot = ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return
+                
+            current_data = snapshot.to_dict()
+            if current_data.get("migrated"):
+                raise ValueError("Already migrated")
+                
+            new_wins = current_data.get("total_wins", 0) + added_wins
+            new_attempts = current_data.get("total_attempts_played", 0) + added_attempts
             
-        current_data = snapshot.to_dict()
-        if current_data.get("migrated"):
-            raise ValueError("Already migrated")
+            transaction.update(ref, {
+                "total_wins": new_wins,
+                "total_attempts_played": new_attempts,
+                "migrated": True
+            })
             
-        new_wins = current_data.get("total_wins", 0) + added_wins
-        new_attempts = current_data.get("total_attempts_played", 0) + added_attempts
-        
-        transaction.update(ref, {
-            "total_wins": new_wins,
-            "total_attempts_played": new_attempts,
-            "migrated": True
-        })
-        
-    try:
-        update_user_stats(db.transaction(), doc_ref)
-        logger.info(f"🔄 [AUTH] 오프라인 기록 연동 성공: '{nickname}' (추가된 승리 수: {added_wins})")
-        return {"success": True, "migrated_wins": added_wins}
-    except ValueError as ve:
-        if str(ve) == "Already migrated":
-            raise HTTPException(status_code=400, detail="이미 오프라인 기록 연동을 완료한 계정입니다.")
-        raise HTTPException(status_code=500, detail=str(ve))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        try:
+            update_user_stats(db.transaction(), doc_ref)
+            logger.info(f"🔄 [AUTH] 오프라인 기록 연동 성공: '{nickname}' (추가된 승리 수: {added_wins})")
+        except ValueError as ve:
+            if str(ve) != "Already migrated":
+                raise HTTPException(status_code=500, detail=str(ve))
+        except Exception as e:
+            logger.warning(f"⚠️ [MIGRATE] 통계 합산 중 오류: {e}")
+    
+    return {"success": True, "migrated_wins": added_wins, "renamed_records": total_renamed}
+

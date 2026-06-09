@@ -439,20 +439,34 @@ export default function GamePage() {
     localStorage.setItem("guessword_auth_token", token);
     localStorage.setItem("guessword_nickname", nickname);
     
-    // 마이그레이션 호출
+    // 익명 닉네임 → 회원 닉네임 마이그레이션
+    const savedAnon = localStorage.getItem("guessword_anon_nickname") || "";
     const savedPastStr = localStorage.getItem("guessword_past_sessions");
+    let pastSessions: any[] = [];
     if (savedPastStr) {
+      try { pastSessions = JSON.parse(savedPastStr); } catch(e) {}
+    }
+
+    // 익명 기록이 있거나 과거 세션이 있으면 마이그레이션 호출
+    if (savedAnon || pastSessions.length > 0) {
       try {
-        const pastSessions = JSON.parse(savedPastStr);
-        if (pastSessions.length > 0) {
-          await fetch(`${getApiUrl()}/api/auth/migrate?token=${token}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ past_sessions: pastSessions })
-          });
-          triggerToast("과거 플레이 기록이 안전하게 연동되었습니다!");
+        const res = await fetch(`${getApiUrl()}/api/auth/migrate?token=${token}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            past_sessions: pastSessions,
+            anon_nickname: savedAnon 
+          })
+        });
+        if (res.ok) {
+          const result = await res.json();
+          if (result.renamed_records > 0 || result.migrated_wins > 0) {
+            triggerToast("이전 플레이 기록이 계정에 연동되었습니다!");
+          }
         }
-      } catch(e) {}
+      } catch(e) {
+        console.warn("마이그레이션 실패:", e);
+      }
     }
   };
   
