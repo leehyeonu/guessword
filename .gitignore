@@ -30,5 +30,5 @@ Thumbs.db
 .vercel
 .env*
 
-# Guessword Data
+# Malmatch Data
 backend/app/data/words.txt
