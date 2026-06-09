@@ -88,9 +88,9 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                   <CalendarClock className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-0.5">4. 매일 새로운 단어</h4>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm mb-0.5">4. 실시간 단어 교체</h4>
                   <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                    정답 단어는 매일 자정(KST)에 자동으로 바뀝니다. 매일 새로운 도전에 참여하고, 적은 시도로 맞출수록 리더보드에서 높은 순위를 차지할 수 있습니다.
+                    누군가 정답을 맞추면 즉시 정답 단어가 새로운 단어로 바뀝니다. 새로운 정답 단어로 리셋되기 전에 최소한의 시도로 정답을 맞추어 리더보드에 이름을 올려보세요!
                   </p>
                 </div>
               </div>

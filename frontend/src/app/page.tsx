@@ -135,10 +135,55 @@ export default function GamePage() {
     }
   }, [gameId]);
 
+  // 서버에서 현재 활성화된 게임 세션 ID 및 이전 정답 목록 가져오기
+  const fetchGameInfo = useCallback(async (showToast = false) => {
+    let coldStartTimer: any = null;
+    if (showToast) {
+      coldStartTimer = setTimeout(() => {
+        triggerToast("서버를 깨우는 중입니다. 잠시만 기다려주세요 (최대 1~2분 소요)");
+      }, 10000);
+    }
+    
+    try {
+      const response = await fetch(`${getApiUrl()}/api/game_info`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache"
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.game_id) {
+          setGameId(data.game_id);
+        }
+        if (data.round) {
+          setRound(data.round);
+        }
+        if (data.past_answers) {
+          setPastAnswers(data.past_answers);
+        }
+        if (data.past_rounds) {
+          setPastRounds(data.past_rounds);
+        }
+      } else {
+        throw new Error("Game info fetch failed");
+      }
+    } catch (error) {
+      console.error("게임 세션 로드 실패:", error);
+      // 서버 연결 실패 시 로컬 백업 세션 유지
+      const savedGameId = localStorage.getItem("malmatch_game_id") || "default-game-id";
+      setGameId(savedGameId);
+    } finally {
+      if (coldStartTimer) clearTimeout(coldStartTimer);
+    }
+  }, []);
+
   // 정렬 순서 (score = 점수높은순, time = 최신순)
   const [historySortOrder, setHistorySortOrder] = useState<"score" | "time">("score");
   const [isPastSessionsExpanded, setIsPastSessionsExpanded] = useState(false);
   const [pastAnswers, setPastAnswers] = useState<Record<string, string>>({});
+  const [round, setRound] = useState<number>(1);
+  const [pastRounds, setPastRounds] = useState<Record<string, number>>({});
 
   // UI 토글
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
@@ -230,41 +275,8 @@ export default function GamePage() {
     }
 
     // 서버에서 현재 활성화된 게임 세션 ID 가져오기
-    const fetchGameInfo = async () => {
-      const coldStartTimer = setTimeout(() => {
-        triggerToast("서버를 깨우는 중입니다. 잠시만 기다려주세요 (최대 1~2분 소요)");
-      }, 10000);
-      
-      try {
-        const response = await fetch(`${getApiUrl()}/api/game_info`, {
-          cache: "no-store",
-          headers: {
-            "Cache-Control": "no-cache"
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.game_id) {
-            setGameId(data.game_id);
-          }
-          if (data.past_answers) {
-            setPastAnswers(data.past_answers);
-          }
-        } else {
-          throw new Error("Game info fetch failed");
-        }
-      } catch (error) {
-        console.error("게임 세션 로드 실패:", error);
-        // 서버 연결 실패 시 로컬 백업 세션 유지
-        const savedGameId = localStorage.getItem("malmatch_game_id") || "default-game-id";
-        setGameId(savedGameId);
-      } finally {
-        clearTimeout(coldStartTimer);
-      }
-    };
-
-    fetchGameInfo();
-  }, []);
+    fetchGameInfo(true);
+  }, [fetchGameInfo]);
 
   // 게임 세션 ID가 바뀔 때 상태 초기화 및 로컬 기록 매핑
   useEffect(() => {
@@ -551,6 +563,7 @@ export default function GamePage() {
         localStorage.setItem("malmatch_game_id", data.game_id);
         localStorage.setItem("malmatch_history", JSON.stringify([]));
         localStorage.removeItem("malmatch_target_word");
+        fetchGameInfo(false);
         return;
       }
 
@@ -614,6 +627,10 @@ export default function GamePage() {
         if (typeof navigator !== "undefined" && navigator.vibrate) {
           navigator.vibrate([100, 50, 100]);
         }
+
+        setTimeout(() => {
+          fetchGameInfo(false);
+        }, 500);
       } else {
         const score = data.score;
         if (score >= 10 && score > localBestScore) {
@@ -806,6 +823,12 @@ export default function GamePage() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* 현재 회차 정보 배지 */}
+            <div className="mb-4.5 px-3.5 py-1.5 rounded-full bg-[var(--apple-blue)]/8 dark:bg-[var(--apple-blue)]/15 border border-[var(--apple-blue)]/10 text-[var(--apple-blue)] text-[11px] sm:text-xs font-bold tracking-wide select-none shrink-0 flex items-center gap-1.5 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--apple-blue)] animate-pulse"></span>
+              <span>현재 #{round}회차 단어 유추 중</span>
+            </div>
 
             {/* 현재 추측 결과 렌더링 */}
             <div className="w-full flex flex-col items-center mb-5 sm:mb-6 text-center">
@@ -1027,14 +1050,18 @@ export default function GamePage() {
                       className="liquid-glass p-3 rounded-xl border border-slate-200/50 dark:border-white/5 text-[11px] sm:text-xs"
                     >
                       <div className="flex items-center justify-between font-bold text-slate-700 dark:text-slate-350 mb-2 pb-1.5 border-b border-slate-200/40 dark:border-zinc-800/40">
-                        <span>라운드 #{pastSessions.length - index} (시도 {session.attemptsCount}회)</span>
+                        <span>
+                          {pastRounds[session.gameId] 
+                            ? `${pastRounds[session.gameId]}회차 단어` 
+                            : `라운드 #${pastSessions.length - index}`} (시도 {session.attemptsCount}회)
+                        </span>
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-[10px] text-slate-500 font-mono">
                             최고 {session.bestScore}점 · {new Date(session.resetTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </span>
-                          {pastAnswers[session.id] && (
+                          {pastAnswers[session.gameId] && (
                             <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded font-semibold tracking-wide shadow-sm">
-                              정답: {pastAnswers[session.id]}
+                              정답: {pastAnswers[session.gameId]}
                             </span>
                           )}
                         </div>

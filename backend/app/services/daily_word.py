@@ -48,29 +48,57 @@ def get_words_list() -> List[str]:
         # 복호화 실패 시 최소한의 기본 단어 제공
         return ["사과", "우주", "바다", "컴퓨터"]
 
-def get_daily_state(today_str: str) -> dict:
+_cached_daily_word = None
+_cached_daily_word_round = 1
+
+def get_daily_target_word() -> str:
+    """현재 활성화된 정답 단어를 가져옵니다. 메모리에 무기한 캐싱하여 DB 조회를 최소화합니다."""
+    global _cached_daily_word, _cached_daily_word_round
+    
+    if _cached_daily_word:
+        return _cached_daily_word
+        
     if not _store.enabled:
-        return None
+        words = get_words_list()
+        _cached_daily_word = random.choice(words)
+        logger.info(f"💡 [SYSTEM] 로컬 정답 단어가 임의로 설정되었습니다: '{_cached_daily_word}'")
+        return _cached_daily_word
+
     db = _store.client
     try:
-        doc_ref = db.collection("daily_words").document(today_str)
+        doc_ref = db.collection("daily_words").document("active")
         doc = doc_ref.get()
         if doc.exists:
-            return doc.to_dict()
+            data = doc.to_dict()
+            word = data.get("word")
+            round_val = data.get("round", 1)
+            if word:
+                _cached_daily_word = word
+                _cached_daily_word_round = round_val
+                logger.info(f"💡 [SYSTEM] 활성 정답 단어가 로드되었습니다: '{word}' (회차: {round_val})")
+                return word
         
+        # active 문서가 없는 경우 최초로 단어 생성
         transaction = db.transaction()
         meta_ref = db.collection("daily_words").document("metadata")
         
         @_store.firestore.transactional
-        def update_in_transaction(transaction, doc_ref, meta_ref, today_str):
+        def init_active_word_in_transaction(transaction, doc_ref, meta_ref):
             snapshot = doc_ref.get(transaction=transaction)
             if snapshot.exists:
-                return snapshot.to_dict()
+                data = snapshot.to_dict()
+                return data.get("word"), data.get("round", 1)
             
             meta_snap = meta_ref.get(transaction=transaction)
             used_words = []
+            round_counter = 1
             if meta_snap.exists:
-                used_words = meta_snap.to_dict().get("used_words", [])
+                meta_data = meta_snap.to_dict()
+                used_words = meta_data.get("used_words", [])
+                round_counter = meta_data.get("round_counter", len(used_words) if used_words else 1)
+            
+            if round_counter < 1:
+                round_counter = 1
                 
             all_words = get_words_list()
             available = [w for w in all_words if w not in used_words]
@@ -81,32 +109,48 @@ def get_daily_state(today_str: str) -> dict:
             chosen = random.choice(available)
             used_words.append(chosen)
             
-            transaction.set(doc_ref, {"word": chosen, "date": today_str})
-            transaction.set(meta_ref, {"used_words": used_words}, merge=True)
-            return {"word": chosen, "date": today_str}
+            kst = timezone(timedelta(hours=9))
+            today_str = datetime.now(kst).strftime("%Y-%m-%d")
             
-        return update_in_transaction(transaction, doc_ref, meta_ref, today_str)
+            transaction.set(doc_ref, {"word": chosen, "date": today_str, "round": round_counter})
+            transaction.set(meta_ref, {
+                "used_words": used_words,
+                "round_counter": round_counter
+            }, merge=True)
+            return chosen, round_counter
+            
+        word, round_val = init_active_word_in_transaction(transaction, doc_ref, meta_ref)
+        _cached_daily_word = word
+        _cached_daily_word_round = round_val
+        logger.info(f"💡 [SYSTEM] 새 활성 정답 단어가 설정되었습니다: '{word}' (회차: {round_val})")
+        return word
     except Exception as e:
-        logger.error(f"❌ [DB_ERROR] Firestore daily word error: {e}")
-        return None
+        logger.error(f"❌ [DB_ERROR] Firestore active word error: {e}")
+        words = get_words_list()
+        _cached_daily_word = words[0]
+        _cached_daily_word_round = 1
+        return _cached_daily_word
+
+def get_daily_target_round() -> int:
+    """현재 활성화된 정답 단어의 회차 번호를 가져옵니다."""
+    global _cached_daily_word_round
+    if _cached_daily_word is None:
+        get_daily_target_word()
+    return _cached_daily_word_round
 
 def get_past_answers() -> Dict[str, str]:
     """이전 세션의 정답 단어를 {game_id(해시): 단어} 형태로 반환합니다."""
     if not _store.enabled:
         return {}
     db = _store.client
-    kst = timezone(timedelta(hours=9))
-    today_str = datetime.now(kst).strftime("%Y-%m-%d")
     try:
         docs = db.collection("daily_words").limit(50).stream()
         answers = {}
         for doc in docs:
-            if doc.id == "metadata" or doc.id == today_str:
+            if doc.id in ("metadata", "active"):
                 continue
             data = doc.to_dict()
             if "word" in data:
-                # 프론트엔드의 session.id는 game_id(SHA-256 해시)이므로
-                # 날짜가 아닌 game_id를 키로 사용해야 매칭됩니다.
                 word = data["word"]
                 game_hash = get_game_id(word)
                 answers[game_hash] = word
@@ -115,41 +159,115 @@ def get_past_answers() -> Dict[str, str]:
         logger.error(f"❌ [DB_ERROR] Firestore past answers error: {e}")
         return {}
 
-_cached_daily_word = None
-_cached_daily_word_date = None
+def get_past_rounds() -> Dict[str, int]:
+    """이전 세션 정답 단어의 회차 정보를 {game_id(해시): 회차} 형태로 반환합니다."""
+    if not _store.enabled:
+        return {}
+    db = _store.client
+    try:
+        docs = db.collection("daily_words").limit(50).stream()
+        rounds = {}
+        for doc in docs:
+            if doc.id in ("metadata", "active"):
+                continue
+            data = doc.to_dict()
+            if "word" in data:
+                word = data["word"]
+                game_hash = get_game_id(word)
+                rounds[game_hash] = data.get("round", 0)
+        return rounds
+    except Exception as e:
+        logger.error(f"❌ [DB_ERROR] Firestore past rounds error: {e}")
+        return {}
 
-def get_daily_target_word() -> str:
-    """오늘 날짜를 기준으로 랜덤 출제하며, 중복을 방지합니다. 메모리에 캐싱하여 DB 조회를 최소화합니다."""
-    global _cached_daily_word, _cached_daily_word_date
+def rotate_target_word(solved_word: str) -> str:
+    """정답 단어를 변경하고 데이터베이스 및 메모리를 실시간으로 업데이트합니다."""
+    global _cached_daily_word, _cached_daily_word_round
     
-    kst = timezone(timedelta(hours=9))
-    today_str = datetime.now(kst).strftime("%Y-%m-%d")
-    
-    # 메모리 캐시 유효성 확인
-    if _cached_daily_word and _cached_daily_word_date == today_str:
+    if not _store.enabled:
+        words = get_words_list()
+        available = [w for w in words if w != solved_word]
+        if not available:
+            available = words
+        chosen = random.choice(available)
+        _cached_daily_word = chosen
+        _cached_daily_word_round += 1
+        logger.info(f"🔄 [SYSTEM] (로컬) 정답 단어가 교체되었습니다: '{solved_word}' -> '{chosen}' (회차: {_cached_daily_word_round})")
+        return chosen
+
+    db = _store.client
+    try:
+        transaction = db.transaction()
+        doc_ref = db.collection("daily_words").document("active")
+        meta_ref = db.collection("daily_words").document("metadata")
+        
+        @_store.firestore.transactional
+        def update_in_transaction(transaction, doc_ref, meta_ref, solved_word):
+            snapshot = doc_ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return None
+                
+            active_data = snapshot.to_dict()
+            current_word = active_data.get("word")
+            current_round = active_data.get("round", 1)
+            
+            if current_word != solved_word:
+                logger.info(f"ℹ️ [SYSTEM] 정답 단어가 이미 교체되어 있습니다. (현재 DB: '{current_word}', 시도한 단어: '{solved_word}')")
+                return current_word, current_round
+                
+            # 1. 이전 단어 아카이브 (과거 목록용)
+            game_hash = get_game_id(solved_word)
+            kst = timezone(timedelta(hours=9))
+            today_str = datetime.now(kst).strftime("%Y-%m-%d")
+            archive_ref = db.collection("daily_words").document(game_hash)
+            
+            solved_at_val = _store.firestore.SERVER_TIMESTAMP if _store.firestore else datetime.now(kst).isoformat()
+            transaction.set(archive_ref, {
+                "word": solved_word,
+                "date": today_str,
+                "solved_at": solved_at_val,
+                "round": current_round
+            })
+            
+            # 2. 새 단어 선택
+            meta_snap = meta_ref.get(transaction=transaction)
+            used_words = []
+            round_counter = current_round
+            if meta_snap.exists:
+                meta_data = meta_snap.to_dict()
+                used_words = meta_data.get("used_words", [])
+                round_counter = meta_data.get("round_counter", current_round)
+                
+            all_words = get_words_list()
+            available = [w for w in all_words if w not in used_words]
+            if not available:
+                available = all_words
+                used_words = []
+                
+            chosen = random.choice(available)
+            used_words.append(chosen)
+            
+            # 회차 번호 1 증가
+            next_round = round_counter + 1
+            
+            # 3. active 문서 업데이트 및 metadata 업데이트
+            transaction.set(doc_ref, {"word": chosen, "date": today_str, "round": next_round})
+            transaction.set(meta_ref, {
+                "used_words": used_words,
+                "round_counter": next_round
+            }, merge=True)
+            
+            logger.info(f"🔄 [SYSTEM] 정답 단어가 성공적으로 교체되었습니다: '{solved_word}'(#{current_round}) -> '{chosen}'(#{next_round})")
+            return chosen, next_round
+            
+        chosen, next_round = update_in_transaction(transaction, doc_ref, meta_ref, solved_word)
+        if chosen:
+            _cached_daily_word = chosen
+            _cached_daily_word_round = next_round
         return _cached_daily_word
-        
-    state = get_daily_state(today_str)
-    if state and "word" in state:
-        word = state["word"]
-        _cached_daily_word = word
-        _cached_daily_word_date = today_str
-        logger.info(f"💡 [SYSTEM] 오늘의 정답 단어가 설정되었습니다: '{word}' (날짜: {today_str})")
-        return word
-        
-    # Fallback to deterministic
-    words = get_words_list()
-    salt = os.getenv("DAILY_WORD_SALT", "fallback-secret-salt-12345").strip()
-    raw_str = f"{today_str}:{salt}"
-    hash_obj = hashlib.sha256(raw_str.encode("utf-8"))
-    hash_int = int(hash_obj.hexdigest(), 16)
-    index = hash_int % len(words)
-    
-    word = words[index]
-    _cached_daily_word = word
-    _cached_daily_word_date = today_str
-    logger.info(f"💡 [SYSTEM] 오늘의 정답 단어가 설정되었습니다 (Fallback): '{word}' (날짜: {today_str})")
-    return word
+    except Exception as e:
+        logger.error(f"❌ [DB_ERROR] Firestore rotate word error: {e}")
+        return _cached_daily_word
 
 def get_game_id(target_word: str) -> str:
     """정답 단어의 해시값(SHA-256)을 구합니다."""

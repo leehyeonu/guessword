@@ -106,6 +106,7 @@ class FirestoreStore:
             if is_correct:
                 self.client.collection("clears").add({
                     "gameId": game_id,
+                    "word": self._safe_string(word, "", 30),
                     "attempts": max(1, int(attempt_count)),
                     "timestamp": self.firestore.SERVER_TIMESTAMP,
                     "nickname": safe_nickname,

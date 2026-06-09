@@ -78,7 +78,7 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
               : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
           }`}
         >
-          오늘 (적은 시도순)
+          최근 정답자
         </button>
         <button
           onClick={() => setActiveTab("overall")}
@@ -118,6 +118,9 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
                       {renderRankIcon(idx)}
                       <span className="font-semibold text-slate-900 dark:text-white truncate">
                         {user.nickname}
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium ml-1.5 bg-slate-500/10 px-1 py-0.5 rounded">
+                          {user.word}
+                        </span>
                         {isMe && <span className="text-[9px] sm:text-[10px] text-yellow-600 dark:text-yellow-500 font-bold ml-1">(나)</span>}
                       </span>
                     </div>
@@ -135,7 +138,7 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
             </AnimatePresence>
           ) : (
             <div className="text-center text-xs text-slate-500 py-6 leading-relaxed">
-              오늘 아직 정답을 맞힌 사람이 없습니다. <br />
+              최근 정답자가 아직 없습니다. <br />
               첫 번째 주인공이 되어보세요!
             </div>
           )

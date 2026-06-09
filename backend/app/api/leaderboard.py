@@ -71,12 +71,12 @@ def save_score(request: ScoreRequest, token: str = None):
         daily_snap = d_ref.get(transaction=transaction)
         user_snap = u_ref.get(transaction=transaction)
         
-        # 어뷰징 방지: 오늘 이미 점수를 등록한 기록이 있다면 덮어쓰기나 승리 수 증가를 하지 않습니다.
+        # 어뷰징 방지: 해당 정답 단어에 이미 점수를 등록한 기록이 있다면 덮어쓰기나 승리 수 증가를 하지 않습니다.
         if daily_snap.exists:
-            logger.info(f"ℹ️ [LEADERBOARD] '{nickname}' 이미 오늘 점수 등록됨 (중복 방지)")
+            logger.info(f"ℹ️ [LEADERBOARD] '{nickname}' 이미 해당 단어 점수 등록됨 (중복 방지)")
             return False
             
-        # 오늘 처음 등록하는 경우
+        # 처음 등록하는 경우
         transaction.set(d_ref, {
             "nickname": nickname,
             "attempts": actual_attempts,
@@ -116,41 +116,47 @@ def save_score(request: ScoreRequest, token: str = None):
     return {"success": True}
 
 @router.get("/daily")
-def get_daily_leaderboard(game_id: str = None):
+def get_daily_leaderboard(game_id: str | None = None, limit: int = 10):
     db = FirestoreStore().client
     if not db:
         raise HTTPException(status_code=500, detail="Database not available")
         
-    if not game_id:
-        game_id = get_game_id(get_daily_target_word())
-        
-    cache_key = f"daily_{game_id}"
+    cache_key = f"recent_clears_{limit}"
     now = time.time()
     if cache_key in _leaderboard_cache:
         cached_data = _leaderboard_cache[cache_key]
-        if now - cached_data["timestamp"] < CACHE_TTL:
-            return {"game_id": game_id, "leaderboard": cached_data["data"]}
+        if now - cached_data["timestamp"] < 30:  # 30초 캐싱
+            return {"game_id": "recent_clears", "leaderboard": cached_data["data"]}
             
-    scores_ref = db.collection("daily_scores").document(game_id).collection("scores")
-    logger.info(f"🔍 [DB_READ] Firestore 일일 리더보드 조회 (Game ID: {game_id})")
-    # 시도 횟수가 적은 순서대로 10명 조회 (Top 10)
-    query = scores_ref.order_by("attempts", direction=firestore.Query.ASCENDING).limit(10)
-    
-    results = []
-    for doc in query.stream():
-        data = doc.to_dict()
-        results.append({
-            "nickname": data.get("nickname"),
-            "attempts": data.get("attempts"),
-            "timestamp": data.get("timestamp")
-        })
+    try:
+        logger.info("🔍 [DB_READ] Firestore 최근 클리어 기록 조회")
+        query = db.collection("clears").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(limit)
         
-    _leaderboard_cache[cache_key] = {
-        "timestamp": now,
-        "data": results
-    }
-        
-    return {"game_id": game_id, "leaderboard": results}
+        results = []
+        for doc in query.stream():
+            data = doc.to_dict()
+            timestamp = data.get("timestamp")
+            if hasattr(timestamp, "isoformat"):
+                timestamp_value = timestamp.isoformat()
+            else:
+                timestamp_value = str(timestamp)
+                
+            results.append({
+                "nickname": data.get("nickname", "익명"),
+                "attempts": data.get("attempts", 0),
+                "timestamp": timestamp_value,
+                "word": data.get("word", "???")  # 단어 정보가 없는 예전 문서 대응
+            })
+            
+        _leaderboard_cache[cache_key] = {
+            "timestamp": now,
+            "data": results
+        }
+            
+        return {"game_id": "recent_clears", "leaderboard": results}
+    except Exception as e:
+        logger.error(f"❌ [LEADERBOARD] 최근 클리어 조회 실패: {e}")
+        return {"game_id": "recent_clears", "leaderboard": []}
 
 @router.get("/overall")
 def get_overall_leaderboard():

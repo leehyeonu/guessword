@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from app.services.daily_word import get_daily_target_word, get_past_answers, get_game_id
+from app.services.daily_word import get_daily_target_word, get_past_answers, get_game_id, rotate_target_word, get_daily_target_round, get_past_rounds
 
 router = APIRouter()
 logger = logging.getLogger("malmatch.api")
@@ -32,7 +32,9 @@ class GuessResponse(BaseModel):
 
 class GameInfoResponse(BaseModel):
     game_id: str = Field(..., description="현재 정답의 SHA-256 해시값")
+    round: int = Field(1, description="현재 정답의 회차")
     past_answers: dict = Field(default={}, description="이전 정답 단어 맵")
+    past_rounds: dict = Field(default={}, description="이전 정답 회차 맵")
 
 class ValidateTargetRequest(BaseModel):
     target_word: str = Field(..., description="어휘 사전에 존재하는지 확인할 단어")
@@ -75,12 +77,18 @@ def get_game_info(request: Request):
     # game_id는 정답 단어의 해시값입니다.
     hashed_game_id = get_game_id(target)
     
-    # 이전 세션들의 정답들을 가져옵니다.
+    # 현재 회차를 가져옵니다.
+    round_val = get_daily_target_round()
+    
+    # 이전 세션들의 정답들과 회차들을 가져옵니다.
     past_answers = get_past_answers()
+    past_rounds = get_past_rounds()
     
     return {
         "game_id": hashed_game_id,
-        "past_answers": past_answers
+        "round": round_val,
+        "past_answers": past_answers,
+        "past_rounds": past_rounds
     }
 
 
@@ -178,6 +186,9 @@ def guess(request: Request, body: GuessRequest):
             ip=client_ip,
             device=user_agent,
         )
+
+    if is_correct:
+        rotate_target_word(target)
 
         # 캐시 무효화 로직 삭제 (Firestore 읽기 비용 절감을 위해 30초 자연 TTL 에 의존)
 
