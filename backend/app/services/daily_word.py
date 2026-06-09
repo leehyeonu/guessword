@@ -110,15 +110,26 @@ def get_past_answers() -> Dict[str, str]:
         logger.error(f"❌ [DB_ERROR] Firestore past answers error: {e}")
         return {}
 
+_cached_daily_word = None
+_cached_daily_word_date = None
+
 def get_daily_target_word() -> str:
-    """오늘 날짜를 기준으로 랜덤 출제하며, 중복을 방지합니다."""
+    """오늘 날짜를 기준으로 랜덤 출제하며, 중복을 방지합니다. 메모리에 캐싱하여 DB 조회를 최소화합니다."""
+    global _cached_daily_word, _cached_daily_word_date
+    
     kst = timezone(timedelta(hours=9))
     today_str = datetime.now(kst).strftime("%Y-%m-%d")
     
+    # 메모리 캐시 유효성 확인
+    if _cached_daily_word and _cached_daily_word_date == today_str:
+        return _cached_daily_word
+        
     state = get_daily_state(today_str)
     if state and "word" in state:
         word = state["word"]
-        logger.info(f"💡 [SYSTEM] 오늘의 정답 단어는 '{word}' 입니다. (날짜: {today_str})")
+        _cached_daily_word = word
+        _cached_daily_word_date = today_str
+        logger.info(f"💡 [SYSTEM] 오늘의 정답 단어가 설정되었습니다: '{word}' (날짜: {today_str})")
         return word
         
     # Fallback to deterministic
@@ -128,7 +139,12 @@ def get_daily_target_word() -> str:
     hash_obj = hashlib.sha256(raw_str.encode("utf-8"))
     hash_int = int(hash_obj.hexdigest(), 16)
     index = hash_int % len(words)
-    return words[index]
+    
+    word = words[index]
+    _cached_daily_word = word
+    _cached_daily_word_date = today_str
+    logger.info(f"💡 [SYSTEM] 오늘의 정답 단어가 설정되었습니다 (Fallback): '{word}' (날짜: {today_str})")
+    return word
 
 def get_game_id(target_word: str) -> str:
     """정답 단어의 해시값(SHA-256)을 구합니다."""
