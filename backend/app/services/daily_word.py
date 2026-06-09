@@ -112,10 +112,6 @@ def get_past_answers() -> Dict[str, str]:
 
 def get_daily_target_word() -> str:
     """오늘 날짜를 기준으로 랜덤 출제하며, 중복을 방지합니다."""
-    env_target = os.getenv("TARGET_WORD", "").strip()
-    if env_target:
-        return env_target
-        
     kst = timezone(timedelta(hours=9))
     today_str = datetime.now(kst).strftime("%Y-%m-%d")
     

@@ -962,7 +962,7 @@ export default function GamePage() {
                       </div>
                       
                       {/* 이 세션의 단어들 나열 */}
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
                         {session.guesses.map((g, gi) => (
                           <span 
                             key={gi} 
