@@ -10,6 +10,12 @@ interface AuthModalProps {
   onSuccess: (token: string, nickname: string) => void;
 }
 
+const getApiUrl = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL;
+  if (!url || url === "undefined" || url === "null") return "";
+  return url;
+};
+
 export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [isLoginTab, setIsLoginTab] = useState(true);
   const [nickname, setNickname] = useState("");
@@ -29,8 +35,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     setErrorMsg("");
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetch(`${baseUrl}${endpoint}`, {
+      const endpoint = isLoginTab ? "/api/auth/login" : "/api/auth/signup";
+      const res = await fetch(`${getApiUrl()}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nickname: nickname.trim(), password })

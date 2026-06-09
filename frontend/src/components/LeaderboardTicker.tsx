@@ -8,6 +8,12 @@ interface LeaderboardTickerProps {
   currentUser: string | null;
 }
 
+const getApiUrl = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL;
+  if (!url || url === "undefined" || url === "null") return "";
+  return url;
+};
+
 export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProps) {
   const [activeTab, setActiveTab] = useState<"daily" | "overall">("daily");
   const [dailyData, setDailyData] = useState<any[]>([]);
@@ -20,7 +26,7 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
     else setIsLoading(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/leaderboard/${tab}`, {
+      const res = await fetch(`${getApiUrl()}/api/leaderboard/${tab}`, {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" }
       });

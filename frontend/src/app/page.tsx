@@ -445,7 +445,7 @@ export default function GamePage() {
       try {
         const pastSessions = JSON.parse(savedPastStr);
         if (pastSessions.length > 0) {
-          await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/migrate?token=${token}`, {
+          await fetch(`${getApiUrl()}/api/auth/migrate?token=${token}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ past_sessions: pastSessions })
@@ -563,7 +563,7 @@ export default function GamePage() {
         
         // 정답을 맞췄을 때 /api/score 호출
         if (authToken && gameId) {
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/leaderboard/score?token=${authToken}`, {
+          fetch(`${getApiUrl()}/api/leaderboard/score?token=${authToken}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ game_id: gameId, attempts: updatedHistory.length })
