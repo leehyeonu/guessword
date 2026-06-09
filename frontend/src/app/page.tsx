@@ -518,7 +518,7 @@ export default function GamePage() {
         },
         body: JSON.stringify({
           guess_word: cleanGuess,
-          nickname,
+          nickname: currentUser || "익명",
           attempt_count: history.length + 1,
         }),
       });
