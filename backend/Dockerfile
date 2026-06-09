@@ -1,12 +1,9 @@
 FROM python:3.10-slim
 
-# 1. 다운로드 및 모델 빌드에 필요한 도구 설치 (aria2, pigz 추가)
+# 1. 시스템 도구 설치 (huggingface-cli 사용을 위해 기본 도구만 유지)
 USER root
 RUN apt-get update && apt-get install -y \
-    wget \
     build-essential \
-    aria2 \
-    pigz \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. 허깅페이스 보안 기준에 맞춘 사용자 설정
@@ -17,11 +14,12 @@ ENV HOME=/home/user \
 
 WORKDIR $HOME/app
 
-# 3. 4.5GB 모델 파일을 먼저 다운로드 (requirements.txt 변경 시에도 캐시 유지)
-# aria2c로 병렬 다운로드, pigz로 병렬 압축 해제하여 속도 극대화
-RUN mkdir -p $HOME/app/models && \
-    aria2c -x 16 -s 16 https://dl.fbaipublicfiles.com/fasttext/vectors-crawl/cc.ko.300.bin.gz -d $HOME/app/models -o cc.ko.300.bin.gz && \
-    pigz -d $HOME/app/models/cc.ko.300.bin.gz
+# 3. 4.5GB 모델 다운로드를 허깅페이스 내부망(Hugging Face Hub)을 통해 초고속 다운로드
+# 페이스북 CDN 대신 HF 내부망을 사용하며 압축 해제 과정도 생략되어 빌드 시간이 극단적으로 단축됩니다.
+RUN pip install --no-cache-dir huggingface_hub && \
+    mkdir -p $HOME/app/models && \
+    huggingface-cli download facebook/fasttext-ko-vectors model.bin --local-dir $HOME/app/models && \
+    mv $HOME/app/models/model.bin $HOME/app/models/cc.ko.300.bin
 
 # 4. 패키지 설치를 위해 요구사항 파일 복사 및 실행
 COPY --chown=user requirements.txt $HOME/app/
