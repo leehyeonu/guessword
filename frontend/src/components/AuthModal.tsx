@@ -29,8 +29,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     setErrorMsg("");
 
     try {
-      const endpoint = isLoginTab ? "/api/auth/login" : "/api/auth/signup";
-      const res = await fetch(process.env.NEXT_PUBLIC_API_URL + endpoint, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetch(`${baseUrl}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nickname: nickname.trim(), password })
