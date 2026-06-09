@@ -24,7 +24,7 @@ class FirestoreStore:
             from firebase_admin import credentials, firestore
             from google.cloud.firestore_v1.base_query import FieldFilter
         except ImportError:
-            logger.warning("firebase-admin 패키지가 없어 Firestore 기록 기능을 비활성화합니다.")
+            logger.warning("⚠️ [SYSTEM] firebase-admin 패키지가 없어 Firestore 기록 기능을 비활성화합니다.")
             return
 
         try:
@@ -51,9 +51,9 @@ class FirestoreStore:
             self.firestore = firestore
             self.FieldFilter = FieldFilter
             self.client = firestore.client(app)
-            logger.info("Firestore Admin SDK 초기화 완료")
+            logger.info("🚀 [SYSTEM] Firestore Admin SDK 초기화 완료")
         except Exception as exc:
-            logger.warning("Firestore Admin SDK 초기화 실패: %s", exc)
+            logger.warning("❌ [SYSTEM] Firestore Admin SDK 초기화 실패: %s", exc)
             self.client = None
             self.firestore = None
 
@@ -89,6 +89,7 @@ class FirestoreStore:
         }
 
         try:
+            logger.info(f"💾 [DB_WRITE] Firestore에 '{safe_nickname}' 사용자의 시도 기록 저장 (단어: '{attempt_payload['word']}')")
             self.client.collection("attempts").add(attempt_payload)
 
             # 유저의 최신 상태만 머지 (읽기 없이 즉시 쓰기하여 읽기 1회 및 추가 쓰기 2회 절약)
@@ -99,6 +100,7 @@ class FirestoreStore:
                 "device": safe_device,
                 "lastActive": self.firestore.SERVER_TIMESTAMP,
             }
+            logger.debug(f"💾 [DB_WRITE] Firestore 유저 정보 업데이트 ('{safe_nickname}')")
             user_ref.set(user_payload, merge=True)
 
             if is_correct:
@@ -116,7 +118,7 @@ class FirestoreStore:
                     "nickname": safe_nickname,
                 })
         except Exception as exc:
-            logger.warning("Firestore 기록 저장 실패: %s", exc)
+            logger.warning("❌ [DB_ERROR] Firestore 기록 저장 실패: %s", exc)
 
     def _log_identity_event(
         self,
@@ -151,6 +153,7 @@ class FirestoreStore:
             return 0
 
         try:
+            logger.info(f"🔍 [DB_READ] Firestore 글로벌 최고 점수 조회 (Game ID: {game_id})")
             docs = (
                 self.client.collection("closest_guesses")
                 .where(filter=self.FieldFilter("gameId", "==", game_id))
@@ -162,7 +165,10 @@ class FirestoreStore:
                 return float(doc.to_dict().get("score", 0))
             return 0
         except Exception as exc:
-            logger.warning("Firestore 최고 점수 조회 실패: %s", exc)
+            if "requires an index" in str(exc):
+                logger.warning("⚠️ [DB_ERROR] Firestore 'closest_guesses' 컬렉션의 인덱스가 필요합니다. Firebase 콘솔에서 생성해주세요.")
+            else:
+                logger.warning("❌ [DB_ERROR] Firestore 최고 점수 조회 실패: %s", exc)
             return 0
 
     def get_recent_clears(self, limit: int = 5) -> list[dict[str, Any]]:
@@ -178,7 +184,7 @@ class FirestoreStore:
             )
             return [self._serialize_clear(doc.id, doc.to_dict()) for doc in docs]
         except Exception as exc:
-            logger.warning("Firestore 클리어 기록 조회 실패: %s", exc)
+            logger.warning("❌ [DB_ERROR] Firestore 클리어 기록 조회 실패: %s", exc)
             return []
 
     def _serialize_clear(self, doc_id: str, data: dict[str, Any]) -> dict[str, Any]:
@@ -210,7 +216,7 @@ class FirestoreStore:
             )
             return [self._serialize_attempt(doc.id, doc.to_dict()) for doc in docs]
         except Exception as exc:
-            logger.warning("Firestore 시도 기록 조회 실패: %s", exc)
+            logger.warning("❌ [DB_ERROR] Firestore 시도 기록 조회 실패: %s", exc)
             return []
 
     def _serialize_attempt(self, doc_id: str, data: dict[str, Any]) -> dict[str, Any]:

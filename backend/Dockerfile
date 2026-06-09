@@ -29,6 +29,6 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 # 5. 나머지 백엔드 소스 코드 복사
 COPY --chown=user . $HOME/app
 
-# 6. 허깅페이스 전용 포트(7860)로 서버 실행
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# 6. 허깅페이스 전용 포트(7860)로 서버 실행 (액세스 로그 비활성화하여 로그 깔끔하게 유지)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860", "--no-access-log"]
 

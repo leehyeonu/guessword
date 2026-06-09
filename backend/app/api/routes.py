@@ -1,15 +1,17 @@
 import hashlib
 import os
 import unicodedata
+import logging
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from app.services.daily_word import get_daily_target_word, get_past_answers
+from app.services.daily_word import get_daily_target_word, get_past_answers, get_game_id
 
 router = APIRouter()
+logger = logging.getLogger("guessword.api")
 
 # SlowAPI Limiter 인스턴스 (IP 기준)
 limiter = Limiter(key_func=get_remote_address)
@@ -58,16 +60,6 @@ class GameStatsResponse(BaseModel):
     recent_attempts: list[AttemptItem]
 
 
-def get_game_id(target_word: str) -> str:
-    """정답 단어의 해시값(SHA-256)을 구합니다."""
-    hasher = hashlib.sha256()
-    salt = os.getenv("GAME_ID_SALT", "").strip()
-    if salt:
-        hasher.update(salt.encode("utf-8"))
-        hasher.update(b":")
-    hasher.update(target_word.encode("utf-8"))
-    return hasher.hexdigest()
-
 
 def get_client_metadata(request: Request) -> tuple[str, str]:
     x_forwarded_for = request.headers.get("x-forwarded-for")
@@ -88,15 +80,14 @@ def get_game_info(request: Request):
     """현재 세션의 고유 game_id(정답 해시)와 이전 정답 목록 조회"""
     target = get_daily_target_word()
     
-    # game_id는 한국 시간(KST) 기준 오늘 날짜
-    kst = timezone(timedelta(hours=9))
-    today_str = datetime.now(kst).strftime("%Y-%m-%d")
+    # game_id는 정답 단어의 해시값입니다.
+    hashed_game_id = get_game_id(target)
     
     # 이전 세션들의 정답들을 가져옵니다.
     past_answers = get_past_answers()
     
     return {
-        "game_id": today_str,
+        "game_id": hashed_game_id,
         "past_answers": past_answers
     }
 
@@ -173,6 +164,10 @@ def guess(request: Request, body: GuessRequest):
     is_correct = (target == guess)
     game_id = get_game_id(target)
     client_ip, user_agent = get_client_metadata(request)
+
+    logger.info(f"👤 [USER_GUESS] '{body.nickname}' 사용자가 '{guess}' 단어를 시도했습니다. (유사도: {similarity:.4f}, 점수: {score:.1f})")
+    if is_correct:
+        logger.info(f"🎉 [CORRECT_GUESS] '{body.nickname}' 사용자가 정답 '{target}'을(를) 맞췄습니다! (총 시도: {body.attempt_count}회)")
 
     store = getattr(request.app.state, "firestore_store", None)
     if store is not None:

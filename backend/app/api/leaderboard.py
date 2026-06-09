@@ -4,16 +4,18 @@ from pydantic import BaseModel, Field
 from google.cloud import firestore
 import time
 from app.services.firestore_store import FirestoreStore
-from app.services.daily_word import get_daily_target_word
+from app.services.daily_word import get_daily_target_word, get_game_id
 from app.api.auth import verify_token
+import logging
 
 router = APIRouter()
+logger = logging.getLogger("guessword.leaderboard")
 
 _leaderboard_cache = {}
 CACHE_TTL = 60  # 60초 캐싱
 
 class ScoreRequest(BaseModel):
-    game_id: str = Field(..., description="오늘 날짜 (예: 2026-06-09)")
+    game_id: str = Field(..., description="정답 단어의 해시값 (Game ID)")
     attempts: int = Field(..., description="맞추기까지 걸린 시도 횟수")
 
 @router.post("/score")
@@ -65,8 +67,16 @@ def save_score(request: ScoreRequest, token: str):
                 "total_attempts_played": new_attempts,
                 "last_played": now_str
             })
+        else:
+            transaction.set(u_ref, {
+                "nickname": nickname,
+                "total_wins": 1,
+                "total_attempts_played": 0
+            })
+            
+        logger.info(f"🏆 [LEADERBOARD] 일일 리더보드 점수 등록 성공 (사용자: '{nickname}', 시도: {actual_attempts}회)")
         return True
-
+        
     save_and_update_score(db.transaction(), daily_ref, user_ref)
     return {"success": True}
 
@@ -77,8 +87,7 @@ def get_daily_leaderboard(game_id: str = None):
         raise HTTPException(status_code=500, detail="Database not available")
         
     if not game_id:
-        kst = timezone(timedelta(hours=9))
-        game_id = datetime.now(kst).strftime("%Y-%m-%d")
+        game_id = get_game_id(get_daily_target_word())
         
     cache_key = f"daily_{game_id}"
     now = time.time()
@@ -88,6 +97,7 @@ def get_daily_leaderboard(game_id: str = None):
             return {"game_id": game_id, "leaderboard": cached_data["data"]}
             
     scores_ref = db.collection("daily_scores").document(game_id).collection("scores")
+    logger.info(f"🔍 [DB_READ] Firestore 일일 리더보드 조회 (Game ID: {game_id})")
     # 시도 횟수가 적은 순서대로 10명 조회 (Top 10)
     query = scores_ref.order_by("attempts", direction=firestore.Query.ASCENDING).limit(10)
     
@@ -121,6 +131,7 @@ def get_overall_leaderboard():
             return {"leaderboard": cached_data["data"]}
         
     # 총 승리 횟수가 많은 순서대로 10명 조회 (Top 10)
+    logger.info("🔍 [DB_READ] Firestore 전체 리더보드(명예의 전당) 조회")
     query = db.collection("users").order_by("total_wins", direction=firestore.Query.DESCENDING).limit(10)
     
     results = []

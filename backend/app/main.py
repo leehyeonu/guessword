@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
     """
     서버 구동 시 FastText 모델 로드하고, 종료 시 메모리 해제
     """
-    logger.info("App 초기화 시작...")
+    logger.info("🚀 [SYSTEM] App 초기화 시작...")
 
     # 구동 환경에 따른 모델 파일 상대 경로 후보군
     candidate_paths = [
@@ -54,31 +54,28 @@ async def lifespan(app: FastAPI):
 
     if not model_path:
         # 모델이 없는 경우 경고만 띄우고 구동 (API 호출 시 500 에러 반환)
-        logger.warning(
-            "경고: 모델 파일 'models/cc.ko.300.bin'을 찾을 수 없습니다. 경로를 확인해 주세요."
-        )
+        logger.warning("⚠️ [SYSTEM] 모델 파일 'models/cc.ko.300.bin'을 찾을 수 없습니다. 경로를 확인해 주세요.")
         app.state.nlp_wrapper = None
     else:
         try:
-            logger.info(f"모델 파일 위치: {model_path}")
+            logger.info(f"🚀 [SYSTEM] FastText 모델 로드 시작: {model_path}")
             app.state.nlp_wrapper = FastTextWrapper(model_path)
+            logger.info("🚀 [SYSTEM] FastText 모델 로드 성공")
         except Exception as e:
-            logger.error(f"FastText 로딩 중 에러 발생: {e}", exc_info=True)
+            logger.error(f"❌ [SYSTEM] FastText 로딩 중 에러 발생: {e}", exc_info=True)
             app.state.nlp_wrapper = None
-
-    logger.info("정답 단어 관리는 daily_word 모듈에서 처리됩니다.")
 
     app.state.firestore_store = FirestoreStore()
     if not app.state.firestore_store.enabled:
-        logger.warning("Firestore 기록/조회 기능이 비활성화된 상태로 실행됩니다.")
+        logger.warning("⚠️ [SYSTEM] Firestore 기록/조회 기능이 비활성화된 상태로 실행됩니다.")
 
     yield
 
     # 종료 시 리소스 정리
-    logger.info("서버 종료 중...")
+    logger.info("🛑 [SYSTEM] 서버 종료 중...")
     if hasattr(app.state, "nlp_wrapper") and app.state.nlp_wrapper is not None:
         del app.state.nlp_wrapper
-        logger.info("FastText 모델 메모리 해제 완료")
+        logger.info("🛑 [SYSTEM] FastText 모델 메모리 해제 완료")
 
 
 app = FastAPI(

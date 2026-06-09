@@ -6,8 +6,10 @@ from pydantic import BaseModel, Field
 from passlib.context import CryptContext
 from google.cloud import firestore
 from app.services.firestore_store import FirestoreStore
+import logging
 
 router = APIRouter()
+logger = logging.getLogger("guessword.auth")
 
 # JWT Config
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "guessword_super_secret_key_123!")
@@ -76,6 +78,7 @@ def signup(request: SignUpRequest):
     })
     
     access_token = create_access_token(data={"sub": request.nickname})
+    logger.info(f"🔐 [AUTH] 새로운 사용자 가입 완료: '{request.nickname}'")
     return {"token": access_token, "nickname": request.nickname}
 
 @router.post("/login", response_model=AuthResponse)
@@ -94,6 +97,7 @@ def login(request: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid nickname or password")
         
     access_token = create_access_token(data={"sub": request.nickname})
+    logger.info(f"🔐 [AUTH] 사용자 로그인 성공: '{request.nickname}'")
     return {"token": access_token, "nickname": request.nickname}
 
 @router.post("/migrate")
@@ -131,6 +135,7 @@ def migrate_data(request: MigrateRequest, token: str):
         
     try:
         update_user_stats(db.transaction(), doc_ref)
+        logger.info(f"🔄 [AUTH] 오프라인 기록 연동 성공: '{nickname}' (추가된 승리 수: {added_wins})")
         return {"success": True, "migrated_wins": added_wins}
     except ValueError as ve:
         if str(ve) == "Already migrated":

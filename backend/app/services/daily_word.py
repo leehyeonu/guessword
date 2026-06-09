@@ -25,7 +25,7 @@ def get_words_list() -> List[str]:
     
     decryption_key = os.getenv("WORDS_DECRYPTION_KEY", "").strip()
     if not decryption_key:
-        logger.error("WORDS_DECRYPTION_KEY 환경변수가 설정되지 않았습니다.")
+        logger.error("❌ [SYSTEM] WORDS_DECRYPTION_KEY 환경변수가 설정되지 않았습니다. (기본 단어로 대체됨)")
         return ["사과", "우주", "바다", "컴퓨터"]
 
     try:
@@ -41,10 +41,10 @@ def get_words_list() -> List[str]:
             raise ValueError("해독된 단어 목록이 비어 있습니다.")
             
         _cached_words = words
-        logger.info(f"정답 단어 목록 {len(_cached_words)}개를 안전하게 해독하여 로드했습니다.")
+        logger.info(f"🚀 [SYSTEM] 정답 단어 목록 {len(_cached_words)}개를 안전하게 해독하여 로드했습니다.")
         return _cached_words
     except Exception as e:
-        logger.error(f"words.enc 로드 및 해독 중 에러: {e}")
+        logger.error(f"❌ [SYSTEM] words.enc 로드 및 해독 중 에러: {e}")
         # 복호화 실패 시 최소한의 기본 단어 제공
         return ["사과", "우주", "바다", "컴퓨터"]
 
@@ -87,7 +87,7 @@ def get_daily_state(today_str: str) -> dict:
             
         return update_in_transaction(transaction, doc_ref, meta_ref, today_str)
     except Exception as e:
-        logger.error(f"Firestore daily word error: {e}")
+        logger.error(f"❌ [DB_ERROR] Firestore daily word error: {e}")
         return None
 
 def get_past_answers() -> Dict[str, str]:
@@ -107,7 +107,7 @@ def get_past_answers() -> Dict[str, str]:
                 answers[doc.id] = data["word"]
         return answers
     except Exception as e:
-        logger.error(f"Firestore past answers error: {e}")
+        logger.error(f"❌ [DB_ERROR] Firestore past answers error: {e}")
         return {}
 
 def get_daily_target_word() -> str:
@@ -118,7 +118,7 @@ def get_daily_target_word() -> str:
     state = get_daily_state(today_str)
     if state and "word" in state:
         word = state["word"]
-        logger.info(f"💡 [ADMIN] 오늘의 정답 단어는 '{word}' 입니다. (날짜: {today_str})")
+        logger.debug(f"💡 [ADMIN] 오늘의 정답 단어는 '{word}' 입니다. (날짜: {today_str})")
         return word
         
     # Fallback to deterministic
@@ -129,3 +129,13 @@ def get_daily_target_word() -> str:
     hash_int = int(hash_obj.hexdigest(), 16)
     index = hash_int % len(words)
     return words[index]
+
+def get_game_id(target_word: str) -> str:
+    """정답 단어의 해시값(SHA-256)을 구합니다."""
+    hasher = hashlib.sha256()
+    salt = os.getenv("GAME_ID_SALT", "").strip()
+    if salt:
+        hasher.update(salt.encode("utf-8"))
+        hasher.update(b":")
+    hasher.update(target_word.encode("utf-8"))
+    return hasher.hexdigest()

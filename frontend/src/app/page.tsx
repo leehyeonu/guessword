@@ -100,6 +100,7 @@ export default function GamePage() {
   // 인증 상태
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [anonNickname, setAnonNickname] = useState<string>("익명");
 
   // 이전 초기화된 세션 목록 상태
   const [pastSessions, setPastSessions] = useState<PastSession[]>([]);
@@ -228,6 +229,14 @@ export default function GamePage() {
       setAuthToken(savedToken);
       setCurrentUser(savedUser);
     }
+
+    // 익명 닉네임 생성 및 복구
+    let savedAnon = localStorage.getItem("guessword_anon_nickname");
+    if (!savedAnon) {
+      savedAnon = `익명#${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      localStorage.setItem("guessword_anon_nickname", savedAnon);
+    }
+    setAnonNickname(savedAnon);
 
     // 이전 초기화된 세션 복구
     const savedPast = localStorage.getItem("guessword_past_sessions");
@@ -518,7 +527,7 @@ export default function GamePage() {
         },
         body: JSON.stringify({
           guess_word: cleanGuess,
-          nickname: currentUser || "익명",
+          nickname: currentUser || anonNickname,
           attempt_count: history.length + 1,
         }),
       });
@@ -924,7 +933,9 @@ export default function GamePage() {
               </div>
               
               <span className="text-[10px] text-slate-500 font-bold flex min-w-0 items-center gap-2 sm:justify-end">
-                {currentUser && <span className="max-w-[110px] truncate text-[9px] px-1.5 py-0.5 rounded bg-[var(--apple-gray-btn)] text-slate-650 dark:text-slate-350 font-semibold">{currentUser}</span>}
+                <span className="max-w-[110px] truncate text-[9px] px-1.5 py-0.5 rounded bg-[var(--apple-gray-btn)] text-slate-650 dark:text-slate-350 font-semibold">
+                  {currentUser || anonNickname}
+                </span>
                 <span className="whitespace-nowrap">시도 횟수: <strong className="text-slate-800 dark:text-white font-bold">{history.length}</strong></span>
               </span>
             </div>
@@ -1049,7 +1060,7 @@ export default function GamePage() {
         {/* 우측 실시간 피드 전광판 */}
         <div className="lg:col-span-1 w-full space-y-4">
           <AttemptTicker
-            userNickname={currentUser || ""}
+            userNickname={currentUser || anonNickname}
             attempts={attempts}
             isLoading={isStatsLoading}
             isRefreshing={isStatsRefreshing}
@@ -1057,7 +1068,7 @@ export default function GamePage() {
             errorMsg={statsError}
           />
           <ClearTicker
-            userNickname={currentUser || ""}
+            userNickname={currentUser || anonNickname}
             clears={clears}
             isLoading={isStatsLoading}
             isRefreshing={isStatsRefreshing}
