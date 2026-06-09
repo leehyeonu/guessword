@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
-from passlib.context import CryptContext
+import bcrypt
 from google.cloud import firestore
 from app.services.firestore_store import FirestoreStore
 import logging
@@ -16,7 +16,7 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "guessword_super_secret_key_123!")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 class SignUpRequest(BaseModel):
     nickname: str = Field(..., min_length=2, max_length=20)
@@ -64,7 +64,7 @@ def signup(request: SignUpRequest):
     if doc.exists:
         raise HTTPException(status_code=400, detail="이미 존재하는 닉네임입니다.")
         
-    hashed_password = pwd_context.hash(request.password)
+    hashed_password = bcrypt.hashpw(request.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
     kst = timezone(timedelta(hours=9))
     now_str = datetime.now(kst).isoformat()
@@ -93,7 +93,17 @@ def login(request: LoginRequest):
         raise HTTPException(status_code=401, detail="닉네임 또는 비밀번호가 올바르지 않습니다.")
         
     user_data = doc.to_dict()
-    if not pwd_context.verify(request.password, user_data.get("password_hash", "")):
+    user_hash = user_data.get("password_hash", "")
+    if not user_hash:
+        raise HTTPException(status_code=401, detail="닉네임 또는 비밀번호가 올바르지 않습니다.")
+        
+    try:
+        is_correct = bcrypt.checkpw(request.password.encode('utf-8'), user_hash.encode('utf-8'))
+    except Exception as e:
+        logger.error(f"❌ [AUTH] 비밀번호 검증 중 예외 발생: {e}")
+        is_correct = False
+        
+    if not is_correct:
         raise HTTPException(status_code=401, detail="닉네임 또는 비밀번호가 올바르지 않습니다.")
         
     access_token = create_access_token(data={"sub": request.nickname})
