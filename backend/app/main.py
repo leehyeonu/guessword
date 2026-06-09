@@ -34,9 +34,17 @@ import threading
 
 def load_model_background(app, path):
     try:
-        logger.info(f"🚀 [SYSTEM] FastText 모델 백그라운드 로드 시작: {path}")
+        from huggingface_hub import hf_hub_download
+        if path:
+            logger.info(f"🚀 [SYSTEM] FastText 모델 백그라운드 로드 시작 (로컬 경로): {path}")
+            model_path = path
+        else:
+            logger.info("🚀 [SYSTEM] 로컬 모델 파일을 찾지 못했습니다. Hugging Face Hub에서 다운로드합니다...")
+            model_path = hf_hub_download(repo_id="facebook/fasttext-ko-vectors", filename="model.bin")
+            logger.info(f"🚀 [SYSTEM] Hugging Face Hub 다운로드 완료: {model_path}")
+
         from app.services.nlp import FastTextWrapper
-        app.state.nlp_wrapper = FastTextWrapper(path)
+        app.state.nlp_wrapper = FastTextWrapper(model_path)
         logger.info("🚀 [SYSTEM] FastText 모델 로드 성공! 이제 게임을 시작할 수 있습니다.")
     except Exception as e:
         logger.error(f"❌ [SYSTEM] FastText 로딩 중 에러 발생: {e}", exc_info=True)
@@ -69,14 +77,9 @@ async def lifespan(app: FastAPI):
             model_path = abs_p
             break
 
-    if not model_path:
-        # 모델이 없는 경우 경고만 띄우고 구동 (API 호출 시 500 에러 반환)
-        logger.warning("⚠️ [SYSTEM] 모델 파일 'models/cc.ko.300.bin'을 찾을 수 없습니다. 경로를 확인해 주세요.")
-        app.state.nlp_wrapper = None
-    else:
-        app.state.nlp_wrapper = "LOADING"
-        # FastAPI 서버가 즉시 응답할 수 있도록 백그라운드 스레드에서 무거운 모델 로딩
-        threading.Thread(target=load_model_background, args=(app, model_path), daemon=True).start()
+    app.state.nlp_wrapper = "LOADING"
+    # FastAPI 서버가 즉시 응답할 수 있도록 백그라운드 스레드에서 무거운 모델 로딩 및 다운로드
+    threading.Thread(target=load_model_background, args=(app, model_path), daemon=True).start()
 
     app.state.firestore_store = FirestoreStore()
     if not app.state.firestore_store.enabled:

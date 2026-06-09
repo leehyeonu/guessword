@@ -9,3 +9,5 @@ firebase-admin>=6.5.0
 PyJWT
 passlib[bcrypt]
 cryptography>=41.0.0
+huggingface_hub>=0.16.4
+

@@ -18,12 +18,7 @@ ENV HOME=/home/user \
 
 WORKDIR $HOME/app
 
-# 3. 4.5GB 모델 다운로드를 curl로 직접 다운로드하여 Docker 레이어 용량 최소화
-# hf_hub_download를 사용하면 ~/.cache 폴더에 중복 저장되어 이미지 용량이 9GB가 되는 문제가 발생하므로 curl을 사용합니다.
-RUN mkdir -p $HOME/app/models && \
-    curl -L -o $HOME/app/models/cc.ko.300.bin https://huggingface.co/facebook/fasttext-ko-vectors/resolve/main/model.bin
-
-# 4. 패키지 설치를 위해 요구사항 파일 복사 및 실행
+# 3. 패키지 설치를 위해 요구사항 파일 복사 및 실행
 COPY --chown=user requirements.txt $HOME/app/
 RUN pip install --no-cache-dir --user -r requirements.txt
 
