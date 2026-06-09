@@ -1,12 +1,13 @@
 import hashlib
 import os
 import unicodedata
+import datetime
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from app.services.daily_word import get_daily_target_word
+from app.services.daily_word import get_daily_target_word, get_past_answers
 
 router = APIRouter()
 
@@ -29,6 +30,7 @@ class GuessResponse(BaseModel):
 
 class GameInfoResponse(BaseModel):
     game_id: str = Field(..., description="현재 정답의 SHA-256 해시값")
+    past_answers: dict = Field(default={}, description="이전 정답 단어 맵")
 
 class ValidateTargetRequest(BaseModel):
     target_word: str = Field(..., description="어휘 사전에 존재하는지 확인할 단어")
@@ -83,10 +85,19 @@ def get_client_metadata(request: Request) -> tuple[str, str]:
 
 @router.get("/game_info", response_model=GameInfoResponse)
 def get_game_info(request: Request):
-    """현재 세션의 고유 game_id(정답 해시) 조회"""
+    """현재 세션의 고유 game_id(정답 해시)와 이전 정답 목록 조회"""
     target = get_daily_target_word()
     
-    return GameInfoResponse(game_id=get_game_id(target))
+    # game_id는 오늘 날짜
+    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    
+    # 이전 세션들의 정답들을 가져옵니다.
+    past_answers = get_past_answers()
+    
+    return {
+        "game_id": today_str,
+        "past_answers": past_answers
+    }
 
 
 import time
@@ -106,7 +117,7 @@ def get_game_stats(request: Request, game_id: str | None = None, limit: int = 5)
 
     if cache_key in _game_stats_cache:
         cached_item = _game_stats_cache[cache_key]
-        if now - cached_item["timestamp"] < 60:  # 60초 캐싱
+        if now - cached_item["timestamp"] < 30:  # 30초 캐싱
             return cached_item["data"]
 
     store = getattr(request.app.state, "firestore_store", None)
@@ -176,10 +187,7 @@ def guess(request: Request, body: GuessRequest):
             device=user_agent,
         )
 
-        # 캐시 무효화 (새 시도가 들어갔으므로 다음 조회 시 갱신 유도)
-        keys_to_remove = [k for k in _game_stats_cache if k.startswith(game_id)]
-        for k in keys_to_remove:
-            _game_stats_cache.pop(k, None)
+        # 캐시 무효화 로직 삭제 (Firestore 읽기 비용 절감을 위해 30초 자연 TTL 에 의존)
 
     return GuessResponse(
         guess_word=guess,

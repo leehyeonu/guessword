@@ -2,17 +2,20 @@ import os
 import hashlib
 import datetime
 import logging
-from typing import List
+import random
+from typing import List, Dict
 
 logger = logging.getLogger("guessword.daily_word")
 
 # 프로젝트 루트(app 기준 부모 디렉토리 또는 data 폴더)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from cryptography.fernet import Fernet
+from app.services.firestore_store import FirestoreStore
 
 WORDS_FILE_PATH = os.path.join(BASE_DIR, "data", "words.enc")
 
 _cached_words = []
+_store = FirestoreStore()
 
 def get_words_list() -> List[str]:
     """words.enc 파일에서 암호화된 단어 목록을 해독하여 로드합니다. 서버 기동 시/최초 호출 시 메모리에 캐싱됩니다."""
@@ -45,30 +48,84 @@ def get_words_list() -> List[str]:
         # 복호화 실패 시 최소한의 기본 단어 제공
         return ["사과", "우주", "바다", "컴퓨터"]
 
+def get_daily_state(today_str: str) -> dict:
+    if not _store.enabled:
+        return None
+    db = _store.client
+    try:
+        doc_ref = db.collection("daily_words").document(today_str)
+        doc = doc_ref.get()
+        if doc.exists:
+            return doc.to_dict()
+        
+        transaction = db.transaction()
+        meta_ref = db.collection("daily_words").document("metadata")
+        
+        @_store.firestore.transactional
+        def update_in_transaction(transaction, doc_ref, meta_ref, today_str):
+            snapshot = doc_ref.get(transaction=transaction)
+            if snapshot.exists:
+                return snapshot.to_dict()
+            
+            meta_snap = meta_ref.get(transaction=transaction)
+            used_words = []
+            if meta_snap.exists:
+                used_words = meta_snap.to_dict().get("used_words", [])
+                
+            all_words = get_words_list()
+            available = [w for w in all_words if w not in used_words]
+            if not available:
+                available = all_words
+                used_words = []
+                
+            chosen = random.choice(available)
+            used_words.append(chosen)
+            
+            transaction.set(doc_ref, {"word": chosen, "date": today_str})
+            transaction.set(meta_ref, {"used_words": used_words}, merge=True)
+            return {"word": chosen, "date": today_str}
+            
+        return update_in_transaction(transaction, doc_ref, meta_ref, today_str)
+    except Exception as e:
+        logger.error(f"Firestore daily word error: {e}")
+        return None
+
+def get_past_answers() -> Dict[str, str]:
+    if not _store.enabled:
+        return {}
+    db = _store.client
+    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    try:
+        docs = db.collection("daily_words").limit(50).stream()
+        answers = {}
+        for doc in docs:
+            if doc.id == "metadata" or doc.id == today_str:
+                continue
+            data = doc.to_dict()
+            if "word" in data:
+                answers[doc.id] = data["word"]
+        return answers
+    except Exception as e:
+        logger.error(f"Firestore past answers error: {e}")
+        return {}
+
 def get_daily_target_word() -> str:
-    """오늘 날짜와 SECRET_SALT를 결합하여 일관된(그러나 예측 불가능한) 난수 해시로 오늘의 단어를 선택합니다."""
-    # 만약 TARGET_WORD 환경변수가 명시적으로 지정되어 있으면 (테스트/비상용) 그것을 최우선으로 반환
+    """오늘 날짜를 기준으로 랜덤 출제하며, 중복을 방지합니다."""
     env_target = os.getenv("TARGET_WORD", "").strip()
     if env_target:
         return env_target
         
-    words = get_words_list()
-    
-    # 한국 시간(KST) 기준으로 날짜를 가져오거나, UTC 기준으로 가져옵니다.
-    # 서버 시간대에 의존하지 않도록 UTC 기반에 9시간 더하는 등 명시적 처리를 할 수도 있지만, 
-    # 여기서는 서버의 로컬 날짜를 사용합니다. (필요 시 수정 가능)
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     
-    # 예측 불가능하게 만드는 비밀 솔트 (미설정 시 기본값 fallback)
+    state = get_daily_state(today_str)
+    if state and "word" in state:
+        return state["word"]
+        
+    # Fallback to deterministic
+    words = get_words_list()
     salt = os.getenv("DAILY_WORD_SALT", "fallback-secret-salt-12345").strip()
-    
-    # 날짜와 솔트를 이어붙임
     raw_str = f"{today_str}:{salt}"
-    
-    # SHA-256 해시 연산 후 정수로 변환
     hash_obj = hashlib.sha256(raw_str.encode("utf-8"))
     hash_int = int(hash_obj.hexdigest(), 16)
-    
-    # 전체 단어 수로 나눈 나머지를 인덱스로 사용
     index = hash_int % len(words)
     return words[index]

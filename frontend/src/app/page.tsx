@@ -14,7 +14,8 @@ import {
   Trophy,
   Loader2,
   Sun,
-  Moon
+  Moon,
+  Edit2
 } from "lucide-react";
 
 import TutorialModal from "@/components/TutorialModal";
@@ -22,6 +23,7 @@ import Toast from "@/components/Toast";
 import Confetti from "@/components/Confetti";
 import ClearTicker from "@/components/ClearTicker";
 import AttemptTicker from "@/components/AttemptTicker";
+import NicknameModal from "@/components/NicknameModal";
 
 interface AttemptItem {
   id: string;
@@ -156,9 +158,12 @@ export default function GamePage() {
 
   // 정렬 순서 (score = 점수높은순, time = 최신순)
   const [historySortOrder, setHistorySortOrder] = useState<"score" | "time">("score");
+  const [isPastSessionsExpanded, setIsPastSessionsExpanded] = useState(false);
+  const [pastAnswers, setPastAnswers] = useState<Record<string, string>>({});
 
   // UI 토글
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [isNicknameModalOpen, setIsNicknameModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isGameWon, setIsGameWon] = useState(false);
@@ -244,12 +249,19 @@ export default function GamePage() {
 
     // 서버에서 현재 활성화된 게임 세션 ID 가져오기
     const fetchGameInfo = async () => {
+      const coldStartTimer = setTimeout(() => {
+        triggerToast("서버를 깨우는 중입니다. 잠시만 기다려주세요 (최대 1~2분 소요)");
+      }, 10000);
+      
       try {
         const response = await fetch(`${getApiUrl()}/api/game_info`);
         if (response.ok) {
           const data = await response.json();
           if (data.game_id) {
             setGameId(data.game_id);
+          }
+          if (data.past_answers) {
+            setPastAnswers(data.past_answers);
           }
         } else {
           throw new Error("Game info fetch failed");
@@ -259,6 +271,8 @@ export default function GamePage() {
         // 서버 연결 실패 시 로컬 백업 세션 유지
         const savedGameId = localStorage.getItem("guessword_game_id") || "default-game-id";
         setGameId(savedGameId);
+      } finally {
+        clearTimeout(coldStartTimer);
       }
     };
 
@@ -333,7 +347,7 @@ export default function GamePage() {
             if (savedPastStr) {
               currentPast = JSON.parse(savedPastStr);
             }
-            const updatedPast = [newSession, ...currentPast];
+            const updatedPast = [newSession, ...currentPast].slice(0, 10); // 기기 용량 및 모바일 UI를 위해 최근 10개까지만 보관
             setPastSessions(updatedPast);
             localStorage.setItem("guessword_past_sessions", JSON.stringify(updatedPast));
           }
@@ -461,6 +475,10 @@ export default function GamePage() {
     }
 
     setIsLoading(true);
+    
+    const coldStartTimer = setTimeout(() => {
+      triggerToast("서버를 깨우는 중입니다. 잠시만 기다려주세요 (최대 1~2분 소요)");
+    }, 10000);
 
     try {
       const response = await fetch(`${getApiUrl()}/api/guess`, {
@@ -543,6 +561,7 @@ export default function GamePage() {
       triggerError("서버 통신 에러가 발생했습니다. 백엔드가 작동 중인지 확인하세요.");
       console.error(err);
     } finally {
+      clearTimeout(coldStartTimer);
       setIsLoading(false);
       setTimeout(() => {
         inputRef.current?.focus();
@@ -604,6 +623,16 @@ export default function GamePage() {
         onClose={() => setIsToastOpen(false)} 
       />
 
+      <NicknameModal
+        isOpen={isNicknameModalOpen}
+        onClose={() => setIsNicknameModalOpen(false)}
+        currentNickname={nickname}
+        onSave={(newNick) => {
+          setNickname(newNick);
+          localStorage.setItem("guessword_nickname", newNick);
+        }}
+      />
+
       {/* 헤더 (Apple-style Clean Header) */}
       <header className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-3 border-b border-slate-200/60 dark:border-zinc-800/80 mb-4 md:mb-6">
         <div className="flex min-w-0 items-center justify-between gap-2 sm:justify-start">
@@ -611,9 +640,14 @@ export default function GamePage() {
             GUESSKOREAN
           </h1>
           {nickname && (
-            <span className="max-w-[120px] truncate text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--apple-gray-btn)] text-slate-650 dark:text-slate-350 shrink-0">
-              {nickname}
-            </span>
+            <button
+              onClick={() => setIsNicknameModalOpen(true)}
+              className="group flex items-center gap-1.5 max-w-[140px] px-2 py-1 rounded-full bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-650 dark:text-slate-350 transition-colors"
+              title="닉네임 변경"
+            >
+              <span className="truncate text-[10px] sm:text-xs font-semibold">{nickname}</span>
+              <Edit2 className="w-3 h-3 opacity-60 group-hover:opacity-100" />
+            </button>
           )}
         </div>
 
@@ -907,17 +941,24 @@ export default function GamePage() {
                     목록 전체 삭제
                   </button>
                 </h4>
-                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                  {pastSessions.map((session, index) => (
+                <div className={`space-y-3 pr-1 ${isPastSessionsExpanded ? "max-h-[300px] overflow-y-auto" : ""}`}>
+                  {(isPastSessionsExpanded ? pastSessions : pastSessions.slice(0, 2)).map((session, index) => (
                     <div 
                       key={session.id} 
                       className="liquid-glass p-3 rounded-xl border border-slate-200/50 dark:border-white/5 text-[11px] sm:text-xs"
                     >
                       <div className="flex items-center justify-between font-bold text-slate-700 dark:text-slate-350 mb-2 pb-1.5 border-b border-slate-200/40 dark:border-zinc-800/40">
                         <span>라운드 #{pastSessions.length - index} (시도 {session.attemptsCount}회)</span>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          최고 {session.bestScore}점 · {new Date(session.resetTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            최고 {session.bestScore}점 · {new Date(session.resetTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </span>
+                          {pastAnswers[session.id] && (
+                            <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded font-semibold tracking-wide shadow-sm">
+                              정답: {pastAnswers[session.id]}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       
                       {/* 이 세션의 단어들 나열 */}
@@ -935,6 +976,14 @@ export default function GamePage() {
                     </div>
                   ))}
                 </div>
+                {pastSessions.length > 2 && (
+                  <button
+                    onClick={() => setIsPastSessionsExpanded(!isPastSessionsExpanded)}
+                    className="w-full mt-3 py-2 text-[11px] font-semibold text-slate-500 hover:bg-[var(--apple-gray-btn-hover)] bg-[var(--apple-gray-btn)] rounded-lg transition-colors border-none cursor-pointer"
+                  >
+                    {isPastSessionsExpanded ? "접기" : `나머지 ${pastSessions.length - 2}개 더 보기`}
+                  </button>
+                )}
               </div>
             )}
           </div>
