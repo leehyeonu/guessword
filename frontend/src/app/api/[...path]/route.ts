@@ -1,19 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest, { params }: { params: { path: string[] } }) {
-    return handleProxy(request, params.path);
+type RouteParams = { params: Promise<{ path: string[] }> };
+
+export async function GET(request: NextRequest, { params }: RouteParams) {
+    const { path } = await params;
+    return handleProxy(request, path);
 }
 
-export async function POST(request: NextRequest, { params }: { params: { path: string[] } }) {
-    return handleProxy(request, params.path);
+export async function POST(request: NextRequest, { params }: RouteParams) {
+    const { path } = await params;
+    return handleProxy(request, path);
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { path: string[] } }) {
-    return handleProxy(request, params.path);
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+    const { path } = await params;
+    return handleProxy(request, path);
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { path: string[] } }) {
-    return handleProxy(request, params.path);
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+    const { path } = await params;
+    return handleProxy(request, path);
 }
 
 async function handleProxy(request: NextRequest, pathArray: string[]) {
