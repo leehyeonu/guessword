@@ -56,7 +56,7 @@ class FastTextWrapper:
         return float(similarity)
 
     def _get_or_cache_neighbors(self, target_word: str) -> dict:
-        """정답 단어의 최인접 이웃 1000개 순위 매핑 및 캐싱"""
+        """정답 단어의 최인접 1000개 순위 매핑 및 캐싱"""
         if target_word in self.target_cache:
             return self.target_cache[target_word]
 

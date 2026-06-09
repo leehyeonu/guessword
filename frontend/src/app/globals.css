@@ -79,6 +79,14 @@ body {
   position: relative;
   transition: background-color 0.25s ease, color 0.25s ease;
   letter-spacing: 0;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+/* iOS Safari 자동 확대 방지 — input/select/textarea 최소 16px */
+input, select, textarea {
+  font-size: 16px;
 }
 
 /* iOS/macOS System Material Panel Utility (Glassmorphism) */

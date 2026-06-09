@@ -873,7 +873,7 @@ export default function GamePage() {
                   value={guessInput}
                   onChange={(e) => setGuessInput(e.target.value)}
                   disabled={isLoading || isGameWon}
-                  className={`w-full pl-4 pr-14 py-3 rounded-xl text-slate-900 dark:text-white bg-[rgba(120,120,128,0.06)] dark:bg-[rgba(120,120,128,0.14)] placeholder-slate-400 dark:placeholder-slate-500 focus:placeholder-slate-300 dark:focus:placeholder-slate-600 outline-none text-sm md:text-base disabled:opacity-50 transition-all border-none focus:ring-1.5 focus:ring-[var(--apple-blue)] ${shouldShakeInput ? "shake-element" : ""}`}
+                  className={`w-full pl-4 pr-14 py-3 rounded-xl text-slate-900 dark:text-white bg-[rgba(120,120,128,0.06)] dark:bg-[rgba(120,120,128,0.14)] placeholder-slate-400 dark:placeholder-slate-500 focus:placeholder-slate-300 dark:focus:placeholder-slate-600 outline-none text-base disabled:opacity-50 transition-all border-none focus:ring-1.5 focus:ring-[var(--apple-blue)] ${shouldShakeInput ? "shake-element" : ""}`}
                 />
                 <button
                   type="submit"
