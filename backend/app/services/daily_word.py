@@ -91,6 +91,7 @@ def get_daily_state(today_str: str) -> dict:
         return None
 
 def get_past_answers() -> Dict[str, str]:
+    """이전 세션의 정답 단어를 {game_id(해시): 단어} 형태로 반환합니다."""
     if not _store.enabled:
         return {}
     db = _store.client
@@ -104,7 +105,11 @@ def get_past_answers() -> Dict[str, str]:
                 continue
             data = doc.to_dict()
             if "word" in data:
-                answers[doc.id] = data["word"]
+                # 프론트엔드의 session.id는 game_id(SHA-256 해시)이므로
+                # 날짜가 아닌 game_id를 키로 사용해야 매칭됩니다.
+                word = data["word"]
+                game_hash = get_game_id(word)
+                answers[game_hash] = word
         return answers
     except Exception as e:
         logger.error(f"❌ [DB_ERROR] Firestore past answers error: {e}")

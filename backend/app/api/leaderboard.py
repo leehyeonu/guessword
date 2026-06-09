@@ -21,15 +21,21 @@ class ScoreRequest(BaseModel):
 
 @router.post("/score")
 def save_score(request: ScoreRequest, token: str = None):
+    logger.info(f"📥 [LEADERBOARD] 점수 등록 요청 수신 (game_id={request.game_id}, attempts={request.attempts}, nickname='{request.nickname}', token={'있음' if token else '없음'})")
     # 토큰이 있으면 인증된 닉네임 사용, 없으면 body의 닉네임 사용
     if token:
         nickname = verify_token(token)
-    elif request.nickname:
+    elif request.nickname and request.nickname.strip():
         nickname = request.nickname.strip()[:20]
     else:
+        logger.warning("⚠️ [LEADERBOARD] 토큰도 닉네임도 없어서 거부")
         raise HTTPException(status_code=400, detail="토큰 또는 닉네임이 필요합니다.")
+    
+    logger.info(f"👤 [LEADERBOARD] 닉네임 결정: '{nickname}'")
+    
     db = FirestoreStore().client
     if not db:
+        logger.error("❌ [LEADERBOARD] Firestore 클라이언트 없음")
         raise HTTPException(status_code=500, detail="Database not available")
         
     kst = timezone(timedelta(hours=9))
@@ -42,8 +48,9 @@ def save_score(request: ScoreRequest, token: str = None):
         count_result = attempts_query.count().get()
         if count_result and count_result[0][0].value > 0:
             actual_attempts = count_result[0][0].value
-    except Exception:
-        pass  # 조회 실패 시 클라이언트에서 보낸 값을 Fallback으로 사용
+            logger.info(f"🔍 [LEADERBOARD] 서버 검증 시도 횟수: {actual_attempts}회")
+    except Exception as e:
+        logger.warning(f"⚠️ [LEADERBOARD] 시도 횟수 검증 실패 (fallback 사용): {e}")
     
     # 2. 일일 기록 확인 및 저장
     daily_ref = db.collection("daily_scores").document(request.game_id).collection("scores").document(nickname)
@@ -56,6 +63,7 @@ def save_score(request: ScoreRequest, token: str = None):
         
         # 어뷰징 방지: 오늘 이미 점수를 등록한 기록이 있다면 덮어쓰기나 승리 수 증가를 하지 않습니다.
         if daily_snap.exists:
+            logger.info(f"ℹ️ [LEADERBOARD] '{nickname}' 이미 오늘 점수 등록됨 (중복 방지)")
             return False
             
         # 오늘 처음 등록하는 경우
@@ -83,8 +91,14 @@ def save_score(request: ScoreRequest, token: str = None):
             
         logger.info(f"🏆 [LEADERBOARD] 일일 리더보드 점수 등록 성공 (사용자: '{nickname}', 시도: {actual_attempts}회)")
         return True
-        
-    save_and_update_score(db.transaction(), daily_ref, user_ref)
+    
+    try:
+        result = save_and_update_score(db.transaction(), daily_ref, user_ref)
+        logger.info(f"✅ [LEADERBOARD] 트랜잭션 완료 (결과: {result})")
+    except Exception as e:
+        logger.error(f"❌ [LEADERBOARD] 트랜잭션 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"점수 저장 실패: {str(e)}")
+    
     return {"success": True}
 
 @router.get("/daily")

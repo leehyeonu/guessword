@@ -577,18 +577,26 @@ export default function GamePage() {
         
         // 정답을 맞췄을 때 리더보드 점수 등록
         if (gameId) {
-          const scoreUrl = authToken 
-            ? `${getApiUrl()}/api/leaderboard/score?token=${authToken}`
-            : `${getApiUrl()}/api/leaderboard/score`;
-          fetch(scoreUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              game_id: gameId, 
-              attempts: updatedHistory.length,
-              nickname: currentUser || anonNickname 
-            })
-          }).catch(console.error);
+          try {
+            const scoreUrl = authToken 
+              ? `${getApiUrl()}/api/leaderboard/score?token=${authToken}`
+              : `${getApiUrl()}/api/leaderboard/score`;
+            const scoreRes = await fetch(scoreUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                game_id: gameId, 
+                attempts: updatedHistory.length,
+                nickname: currentUser || anonNickname 
+              })
+            });
+            if (!scoreRes.ok) {
+              const errText = await scoreRes.text();
+              console.error("리더보드 등록 실패:", scoreRes.status, errText);
+            }
+          } catch (scoreErr) {
+            console.error("리더보드 등록 에러:", scoreErr);
+          }
         }
         
         // 정답 성공 시 스마트폰 진동 피드백
