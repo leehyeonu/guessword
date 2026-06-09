@@ -1,7 +1,7 @@
 import hashlib
 import os
 import unicodedata
-import datetime
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field
 from slowapi import Limiter
@@ -88,8 +88,9 @@ def get_game_info(request: Request):
     """현재 세션의 고유 game_id(정답 해시)와 이전 정답 목록 조회"""
     target = get_daily_target_word()
     
-    # game_id는 오늘 날짜
-    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    # game_id는 한국 시간(KST) 기준 오늘 날짜
+    kst = timezone(timedelta(hours=9))
+    today_str = datetime.now(kst).strftime("%Y-%m-%d")
     
     # 이전 세션들의 정답들을 가져옵니다.
     past_answers = get_past_answers()

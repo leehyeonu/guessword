@@ -15,7 +15,11 @@ from app.api.routes import router as api_router, limiter
 from app.services.firestore_store import FirestoreStore
 from app.services.nlp import FastTextWrapper
 
-# 기본 로깅 세팅
+# 기본 로깅 세팅 (KST 기준)
+from datetime import datetime, timezone, timedelta
+kst_tz = timezone(timedelta(hours=9))
+logging.Formatter.converter = lambda *args: datetime.now(kst_tz).timetuple()
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

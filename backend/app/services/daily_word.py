@@ -1,6 +1,6 @@
 import os
 import hashlib
-import datetime
+from datetime import datetime, timezone, timedelta
 import logging
 import random
 from typing import List, Dict
@@ -94,7 +94,8 @@ def get_past_answers() -> Dict[str, str]:
     if not _store.enabled:
         return {}
     db = _store.client
-    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    kst = timezone(timedelta(hours=9))
+    today_str = datetime.now(kst).strftime("%Y-%m-%d")
     try:
         docs = db.collection("daily_words").limit(50).stream()
         answers = {}
@@ -115,7 +116,8 @@ def get_daily_target_word() -> str:
     if env_target:
         return env_target
         
-    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    kst = timezone(timedelta(hours=9))
+    today_str = datetime.now(kst).strftime("%Y-%m-%d")
     
     state = get_daily_state(today_str)
     if state and "word" in state:
