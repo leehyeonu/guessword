@@ -36,7 +36,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         body: JSON.stringify({ nickname: nickname.trim(), password })
       });
 
-      const data = await res.json();
+      let data: any = {};
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        throw new Error("서버와 통신하는 과정에서 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+      }
+
       if (!res.ok) {
         throw new Error(data.detail || "오류가 발생했습니다.");
       }
@@ -44,7 +51,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       onSuccess(data.token, data.nickname);
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message);
+      let msg = err.message || "오류가 발생했습니다.";
+      if (msg.includes("Failed to fetch") || msg.includes("fetch failed")) {
+        msg = "서버와 통신할 수 없습니다. 인터넷 연결 상태나 서버가 켜져 있는지 확인해 주세요.";
+      }
+      setErrorMsg(msg);
     } finally {
       setIsLoading(false);
     }

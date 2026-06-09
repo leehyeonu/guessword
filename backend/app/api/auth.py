@@ -46,23 +46,23 @@ def verify_token(token: str) -> str:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         nickname: str = payload.get("sub")
         if nickname is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
         return nickname
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
+        raise HTTPException(status_code=401, detail="인증 토큰이 만료되었습니다.")
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
 
 @router.post("/signup", response_model=AuthResponse)
 def signup(request: SignUpRequest):
     db = FirestoreStore().client
     if not db:
-        raise HTTPException(status_code=500, detail="Database not available")
+        raise HTTPException(status_code=500, detail="데이터베이스 서버에 연결할 수 없습니다.")
         
     doc_ref = db.collection("users").document(request.nickname)
     doc = doc_ref.get()
     if doc.exists:
-        raise HTTPException(status_code=400, detail="Nickname already exists")
+        raise HTTPException(status_code=400, detail="이미 존재하는 닉네임입니다.")
         
     hashed_password = pwd_context.hash(request.password)
     
@@ -85,16 +85,16 @@ def signup(request: SignUpRequest):
 def login(request: LoginRequest):
     db = FirestoreStore().client
     if not db:
-        raise HTTPException(status_code=500, detail="Database not available")
+        raise HTTPException(status_code=500, detail="데이터베이스 서버에 연결할 수 없습니다.")
         
     doc_ref = db.collection("users").document(request.nickname)
     doc = doc_ref.get()
     if not doc.exists:
-        raise HTTPException(status_code=401, detail="Invalid nickname or password")
+        raise HTTPException(status_code=401, detail="닉네임 또는 비밀번호가 올바르지 않습니다.")
         
     user_data = doc.to_dict()
     if not pwd_context.verify(request.password, user_data.get("password_hash", "")):
-        raise HTTPException(status_code=401, detail="Invalid nickname or password")
+        raise HTTPException(status_code=401, detail="닉네임 또는 비밀번호가 올바르지 않습니다.")
         
     access_token = create_access_token(data={"sub": request.nickname})
     logger.info(f"🔐 [AUTH] 사용자 로그인 성공: '{request.nickname}'")
@@ -105,7 +105,7 @@ def migrate_data(request: MigrateRequest, token: str):
     nickname = verify_token(token)
     db = FirestoreStore().client
     if not db:
-        raise HTTPException(status_code=500, detail="Database not available")
+        raise HTTPException(status_code=500, detail="데이터베이스 서버에 연결할 수 없습니다.")
         
     # past_sessions 배열 길이를 total_wins에 더합니다.
     # 각 세션에서 시도했던 횟수를 total_attempts_played에 더합니다.
