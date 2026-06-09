@@ -24,7 +24,7 @@ import Confetti from "@/components/Confetti";
 import AttemptTicker from "@/components/AttemptTicker";
 import LeaderboardTicker from "@/components/LeaderboardTicker";
 import AuthModal from "@/components/AuthModal";
-import LeaderboardModal from "@/components/LeaderboardModal";
+
 
 interface AttemptItem {
   id: string;
@@ -143,7 +143,6 @@ export default function GamePage() {
   // UI 토글
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isGameWon, setIsGameWon] = useState(false);
@@ -658,12 +657,6 @@ export default function GamePage() {
         onClose={() => setIsAuthModalOpen(false)} 
         onSuccess={handleAuthSuccess} 
       />
-      
-      <LeaderboardModal 
-        isOpen={isLeaderboardModalOpen} 
-        onClose={() => setIsLeaderboardModalOpen(false)} 
-        currentUser={currentUser} 
-      />
 
       {/* 헤더 (Apple-style Clean Header) */}
       <header className="w-full flex items-center justify-between py-3 px-1 sm:px-2 border-b border-slate-200/60 dark:border-zinc-800/80 mb-4 md:mb-6">
@@ -687,40 +680,33 @@ export default function GamePage() {
         {/* 오른쪽: 툴바 및 유저 컨트롤 */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* 아이콘 툴바 */}
-          <div className="flex items-center gap-0.5 bg-[var(--apple-gray-btn)] dark:bg-slate-800 rounded-lg p-0.5">
+          <div className="flex items-center gap-0.5 bg-[var(--apple-gray-btn)] rounded-lg p-0.5">
             <button
               onClick={toggleTheme}
-              className="p-1.5 sm:p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-white dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700 transition-all"
+              className="p-1.5 sm:p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-[var(--apple-gray-btn-hover)] transition-all"
               title={theme === "light" ? "다크 모드" : "라이트 모드"}
             >
               {theme === "light" ? <Moon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" /> : <Sun className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
             </button>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-1.5 sm:p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-white dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700 transition-all"
+              className="p-1.5 sm:p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-[var(--apple-gray-btn-hover)] transition-all"
               title={soundEnabled ? "소리 끄기" : "소리 켜기"}
             >
               {soundEnabled ? <Volume2 className="w-4 h-4 sm:w-[18px] sm:h-[18px]" /> : <VolumeX className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
             </button>
             <button
               onClick={() => setIsTutorialOpen(true)}
-              className="p-1.5 sm:p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-white dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700 transition-all"
+              className="p-1.5 sm:p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-[var(--apple-gray-btn-hover)] transition-all"
               title="도움말"
             >
               <HelpCircle className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
-            </button>
-            <button
-              onClick={() => setIsLeaderboardModalOpen(true)}
-              className="p-1.5 sm:p-2 rounded-md text-yellow-600 dark:text-yellow-500 hover:bg-white dark:hover:bg-slate-700 transition-all"
-              title="리더보드"
-            >
-              <Trophy className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
             </button>
           </div>
 
           {/* 유저 로그인/아웃 */}
           {currentUser ? (
-            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-[var(--apple-gray-btn)] dark:bg-slate-800">
+            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-[var(--apple-gray-btn)]">
               <span className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 max-w-[50px] sm:max-w-[80px] truncate">{currentUser}</span>
               <button 
                 onClick={handleLogout} 
