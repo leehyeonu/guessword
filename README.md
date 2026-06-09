@@ -29,7 +29,7 @@
 
 ## 폴더 구조
 ```text
-guessword/
+malmatch/
 ├── backend/              # FastAPI 서버 및 Dockerfile
 │   ├── app/
 │   │   ├── api/          # API 라우트 (guess, auth, leaderboard)
@@ -86,7 +86,7 @@ guessword/
 2. 다운로드 완료 후 압축을 풀어줍니다.
 3. 압축이 풀린 `cc.ko.300.bin` (약 4.5GB) 파일을 프로젝트 루트의 **`models/`** 폴더에 넣어주세요.
    ```bash
-   guessword/models/cc.ko.300.bin
+   malmatch/models/cc.ko.300.bin
    ```
 
 ---

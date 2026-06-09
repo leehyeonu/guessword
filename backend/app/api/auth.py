@@ -12,7 +12,7 @@ router = APIRouter()
 logger = logging.getLogger("malmatch.auth")
 
 # JWT Config
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "guessword_super_secret_key_123!")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "malmatch_super_secret_key_123!")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
