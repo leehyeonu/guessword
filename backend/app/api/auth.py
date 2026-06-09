@@ -226,6 +226,14 @@ def migrate_data(request: MigrateRequest, token: str):
                 raise HTTPException(status_code=500, detail=str(ve))
         except Exception as e:
             logger.warning(f"⚠️ [MIGRATE] 통계 합산 중 오류: {e}")
+    # 마이그레이션 완료 후 리더보드 캐시 무효화
+    if total_renamed > 0 or added_wins > 0:
+        try:
+            from app.api.leaderboard import invalidate_leaderboard_cache
+            invalidate_leaderboard_cache()
+            logger.info("🔄 [MIGRATE] 리더보드 캐시 무효화 완료")
+        except Exception as e:
+            logger.warning(f"⚠️ [MIGRATE] 리더보드 캐시 무효화 실패: {e}")
     
     return {"success": True, "migrated_wins": added_wins, "renamed_records": total_renamed}
 

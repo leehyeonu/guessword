@@ -577,6 +577,15 @@ export default function GamePage() {
         
         // 정답을 맞췄을 때 리더보드 점수 등록
         if (gameId) {
+          const submittingNickname = currentUser || anonNickname;
+          console.log("[리더보드] 점수 등록 시도:", { 
+            authToken: authToken ? "있음" : "없음", 
+            currentUser, 
+            anonNickname, 
+            submittingNickname,
+            gameId,
+            attempts: updatedHistory.length 
+          });
           try {
             const scoreUrl = authToken 
               ? `${getApiUrl()}/api/leaderboard/score?token=${authToken}`
@@ -587,12 +596,14 @@ export default function GamePage() {
               body: JSON.stringify({ 
                 game_id: gameId, 
                 attempts: updatedHistory.length,
-                nickname: currentUser || anonNickname 
+                nickname: submittingNickname
               })
             });
             if (!scoreRes.ok) {
               const errText = await scoreRes.text();
               console.error("리더보드 등록 실패:", scoreRes.status, errText);
+            } else {
+              console.log("[리더보드] 등록 성공!");
             }
           } catch (scoreErr) {
             console.error("리더보드 등록 에러:", scoreErr);

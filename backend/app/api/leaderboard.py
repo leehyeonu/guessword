@@ -14,6 +14,10 @@ logger = logging.getLogger("malmatch.leaderboard")
 _leaderboard_cache = {}
 CACHE_TTL = 60  # 60초 캐싱
 
+def invalidate_leaderboard_cache():
+    """마이그레이션이나 점수 등록 후 캐시를 비워서 즉시 반영되도록 합니다."""
+    _leaderboard_cache.clear()
+
 class ScoreRequest(BaseModel):
     game_id: str = Field(..., description="정답 단어의 해시값 (Game ID)")
     attempts: int = Field(..., description="맞추기까지 걸린 시도 횟수")
@@ -22,14 +26,20 @@ class ScoreRequest(BaseModel):
 @router.post("/score")
 def save_score(request: ScoreRequest, token: str = None):
     logger.info(f"📥 [LEADERBOARD] 점수 등록 요청 수신 (game_id={request.game_id}, attempts={request.attempts}, nickname='{request.nickname}', token={'있음' if token else '없음'})")
-    # 토큰이 있으면 인증된 닉네임 사용, 없으면 body의 닉네임 사용
+    # 토큰이 있으면 인증된 닉네임 사용, 실패 시 body의 닉네임으로 fallback
+    nickname = None
     if token:
-        nickname = verify_token(token)
-    elif request.nickname and request.nickname.strip():
-        nickname = request.nickname.strip()[:20]
-    else:
-        logger.warning("⚠️ [LEADERBOARD] 토큰도 닉네임도 없어서 거부")
-        raise HTTPException(status_code=400, detail="토큰 또는 닉네임이 필요합니다.")
+        try:
+            nickname = verify_token(token)
+        except HTTPException as e:
+            logger.warning(f"⚠️ [LEADERBOARD] 토큰 검증 실패 ({e.detail}), body nickname으로 fallback")
+    
+    if not nickname:
+        if request.nickname and request.nickname.strip():
+            nickname = request.nickname.strip()[:20]
+        else:
+            logger.warning("⚠️ [LEADERBOARD] 토큰도 닉네임도 없어서 거부")
+            raise HTTPException(status_code=400, detail="토큰 또는 닉네임이 필요합니다.")
     
     logger.info(f"👤 [LEADERBOARD] 닉네임 결정: '{nickname}'")
     
@@ -83,10 +93,12 @@ def save_score(request: ScoreRequest, token: str = None):
                 "last_played": now_str
             })
         else:
+            # 익명이든 회원이든 동일한 구조로 유저 문서 생성
             transaction.set(u_ref, {
                 "nickname": nickname,
                 "total_wins": 1,
-                "total_attempts_played": 0
+                "total_attempts_played": actual_attempts,
+                "last_played": now_str
             })
             
         logger.info(f"🏆 [LEADERBOARD] 일일 리더보드 점수 등록 성공 (사용자: '{nickname}', 시도: {actual_attempts}회)")
@@ -95,6 +107,8 @@ def save_score(request: ScoreRequest, token: str = None):
     try:
         result = save_and_update_score(db.transaction(), daily_ref, user_ref)
         logger.info(f"✅ [LEADERBOARD] 트랜잭션 완료 (결과: {result})")
+        if result:
+            invalidate_leaderboard_cache()
     except Exception as e:
         logger.error(f"❌ [LEADERBOARD] 트랜잭션 실패: {e}")
         raise HTTPException(status_code=500, detail=f"점수 저장 실패: {str(e)}")
@@ -151,9 +165,11 @@ def get_overall_leaderboard():
         if now - cached_data["timestamp"] < CACHE_TTL:
             return {"leaderboard": cached_data["data"]}
         
-    # 총 승리 횟수가 많은 순서대로 10명 조회 (Top 10)
+    # 총 승리 횟수가 1 이상인 유저만, 많은 순서대로 10명 조회 (Top 10)
     logger.info("🔍 [DB_READ] Firestore 전체 리더보드(명예의 전당) 조회")
-    query = db.collection("users").order_by("total_wins", direction=firestore.Query.DESCENDING).limit(10)
+    query = db.collection("users").where(
+        filter=firestore.FieldFilter("total_wins", ">=", 1)
+    ).order_by("total_wins", direction=firestore.Query.DESCENDING).limit(10)
     
     results = []
     for doc in query.stream():
