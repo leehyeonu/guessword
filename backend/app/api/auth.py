@@ -9,7 +9,7 @@ from app.services.firestore_store import FirestoreStore
 import logging
 
 router = APIRouter()
-logger = logging.getLogger("guessword.auth")
+logger = logging.getLogger("malmatch.auth")
 
 # JWT Config
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "guessword_super_secret_key_123!")

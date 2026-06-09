@@ -1,8 +1,6 @@
-# K-Semantle (한국어 꼬맨틀 게임)
+# 말맞춤 (MalMatch) — 한국어 단어 추측 게임
 
-제시된 단어와 정답 단어 사이의 유사도를 비교해서 숨겨진 단어를 맞추는 게임입니다. 원래 유명한 Semantle 게임의 한국어 버전입니다.
-
-FastAPI 백엔드에서 FastText 한국어 모델로 두 단어의 유사도와 순위를 계산하고, Next.js 프론트엔드로 깔끔하고 반응성 좋은 UI를 띄워줍니다.
+유사도를 비교하며 숨겨진 비밀 단어를 유추해내는 게임입니다. FastAPI 백엔드에서 FastText 한국어 모델로 두 단어의 유사도를 계산하고, Next.js 프론트엔드로 깔끔하고 반응성 좋은 UI를 띄워줍니다.
 
 ---
 
@@ -88,7 +86,6 @@ guessword/
 2. 다운로드 완료 후 압축을 풀어줍니다.
 3. 압축이 풀린 `cc.ko.300.bin` (약 4.5GB) 파일을 프로젝트 루트의 **`models/`** 폴더에 넣어주세요.
    ```bash
-   # 최종 경로가 이렇게 되어야 함
    guessword/models/cc.ko.300.bin
    ```
 
@@ -97,30 +94,19 @@ guessword/
 ## 2. 백엔드 실행 방법
 
 ### 방법 A. 도커(Docker Compose)로 띄우기
-도커가 깔끔하게 실행됩니다. 로컬 메모리는 최소 8GB 이상 확보하는 것을 권장합니다.
-
 ```bash
-# 컨테이너 빌드 및 백그라운드 구동
 docker-compose up -d --build
-
-# 서버 로그 확인 (FastText 로딩 상태 등)
 docker-compose logs -f
 ```
 - API 주소: `http://localhost:8000`
 - Swagger 문서: `http://localhost:8000/docs`
 
-### 방법 B. 로컬 파이썬(Python)으로 직접 실행
+### 방법 B. 로컬 파이썬으로 직접 실행
 ```bash
 cd backend
-
-# 가상환경 세팅
 python3 -m venv venv
-source venv/bin/activate  # 윈도우는 venv\Scripts\activate
-
-# 패키지 설치
+source venv/bin/activate
 pip install -r requirements.txt
-
-# 서버 띄우기
 uvicorn app.main:app --reload
 ```
 
@@ -128,15 +114,9 @@ uvicorn app.main:app --reload
 
 ## 3. 프론트엔드 실행 방법
 
-로컬에 Node.js가 깔려있어야 합니다.
-
 ```bash
 cd frontend
-
-# 패키지 설치
 npm install
-
-# 로컬 개발 서버 실행
 npm run dev
 ```
 - 브라우저 접속: `http://localhost:3000`
@@ -145,10 +125,7 @@ npm run dev
 
 #### 로컬 개발용 (`frontend/.env.local`)
 ```env
-# 로컬 백엔드 주소 (로컬 개발 시에만 사용)
 NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Firebase 클라이언트 설정
 NEXT_PUBLIC_FIREBASE_API_KEY=...
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
@@ -158,29 +135,25 @@ NEXT_PUBLIC_FIREBASE_APP_ID=...
 ```
 
 #### Vercel 환경변수 (프로덕션 배포용)
-| 변수명 | 설명 | 예시 |
-|--------|------|------|
-| `HF_API_URL` | Private HF Space 백엔드 URL | `https://leehyeonu-guessword.hf.space` |
-| `HF_TOKEN` | Hugging Face 액세스 토큰 (READ 권한) | `hf_xxxxxxxxxxxx` |
-| `NEXT_PUBLIC_FIREBASE_*` | Firebase 클라이언트 키 (6개) | — |
+| 변수명 | 설명 |
+|--------|------|
+| `HF_API_URL` | Private HF Space 백엔드 URL |
+| `HF_TOKEN` | Hugging Face 액세스 토큰 (READ 권한) |
+| `NEXT_PUBLIC_FIREBASE_*` | Firebase 클라이언트 키 (6개) |
 
-> ⚠️ **중요**: Vercel에서 `NEXT_PUBLIC_API_URL`을 설정하지 마세요. 설정하면 프론트엔드가 프록시를 우회하여 Private Space에 직접 접근을 시도하고 404 오류가 발생합니다.
+> ⚠️ **중요**: Vercel에서 `NEXT_PUBLIC_API_URL`을 설정하지 마세요. 프록시를 우회하여 404 오류가 발생합니다.
 
 ---
 
 ## 4. 배포
 
-### 원클릭 배포 스크립트
 ```bash
 ./deploy.sh "커밋 메시지"
 ```
-이 스크립트는 다음을 순서대로 수행합니다:
-1. 로컬 코드 Git 커밋
-2. GitHub에 푸시 (→ Vercel 자동 배포 트리거)
-3. Hugging Face Spaces에 백엔드 코드 동기화
+순서: Git 커밋 → GitHub 푸시 (Vercel 자동 배포) → HF Spaces 백엔드 동기화
 
 ---
 
 ## ⚙️ 게임 룰 & 정답 단어 관리
-- **룰**: 단어를 입력하면 0~100점 사이로 유사도가 계산됩니다. 정답 단어와 유사한 상위 1,000위 단어에 진입하면 50점 이상이 되며, 글래스 보드 뒷배경이 붉은색으로 환하게 바뀝니다.
-- **정답 단어 변경**: 매일 자정(KST) 기준으로 자동 로테이션됩니다. 단어 목록은 `backend/app/data/words.enc`에 암호화되어 있으며, `backend/scripts/encrypt_words.py`로 관리합니다.
+- **룰**: 단어를 입력하면 0~100점 사이로 유사도가 계산됩니다. 상위 1,000개 유사어에 진입하면 50점 이상이 되며, 글래스 보드가 붉은색으로 바뀝니다.
+- **정답 변경**: 매일 자정(KST) 자동 로테이션. `backend/scripts/encrypt_words.py`로 관리합니다.

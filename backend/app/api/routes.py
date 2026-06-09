@@ -11,7 +11,7 @@ from slowapi.util import get_remote_address
 from app.services.daily_word import get_daily_target_word, get_past_answers, get_game_id
 
 router = APIRouter()
-logger = logging.getLogger("guessword.api")
+logger = logging.getLogger("malmatch.api")
 
 # SlowAPI Limiter 인스턴스 (IP 기준)
 limiter = Limiter(key_func=get_remote_address)

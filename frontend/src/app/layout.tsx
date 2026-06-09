@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GuessKorean - 단어 추측 게임",
-  description: "유사도를 비교하며 숨겨진 비밀 단어를 유추해내는 단어 추정 게임입니다. 정답 단어에 도전해 보세요!",
+  title: "말맞춤 (MalMatch) - 단어 추측 게임",
+  description: "AI 유사도를 활용해 숨겨진 비밀 단어를 유추해내는 단어 추측 게임입니다. 매일 새로운 정답에 도전하세요!",
   icons: {
     icon: "/icon.svg",
   },
@@ -36,7 +36,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var savedTheme = localStorage.getItem('guessword_theme');
+                  var savedTheme = localStorage.getItem('malmatch_theme');
                   var theme = savedTheme;
                   if (!theme) {
                     var mql = window.matchMedia('(prefers-color-scheme: dark)');

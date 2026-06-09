@@ -27,7 +27,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger("guessword.main")
+logger = logging.getLogger("malmatch.main")
 
 
 import threading
@@ -95,8 +95,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="K-Semantle API",
-    description="한국어 단어 유사도 측정 게임 API",
+    title="MalMatch API",
+    description="말맞춤 - 한국어 단어 유사도 측정 게임 API",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -129,6 +129,6 @@ app.include_router(leaderboard_router, prefix="/api/leaderboard", tags=["leaderb
 def index():
     return {
         "status": "online",
-        "message": "K-Semantle backend API is running.",
+        "message": "MalMatch backend API is running.",
         "model_loaded": app.state.nlp_wrapper is not None if hasattr(app.state, "nlp_wrapper") else False
     }

@@ -4,7 +4,7 @@ from difflib import SequenceMatcher
 import numpy as np
 import fasttext
 
-logger = logging.getLogger("guessword.nlp")
+logger = logging.getLogger("malmatch.nlp")
 
 class FastTextWrapper:
     def __init__(self, model_path: str):

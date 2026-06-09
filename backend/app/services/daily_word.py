@@ -5,7 +5,7 @@ import logging
 import random
 from typing import List, Dict
 
-logger = logging.getLogger("guessword.daily_word")
+logger = logging.getLogger("malmatch.daily_word")
 
 # 프로젝트 루트(app 기준 부모 디렉토리 또는 data 폴더)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

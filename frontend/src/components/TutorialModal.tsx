@@ -10,7 +10,7 @@ interface TutorialModalProps {
 
 export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
   const handleClose = () => {
-    localStorage.setItem("guessword_tutorial_seen", "true");
+    localStorage.setItem("malmatch_tutorial_seen", "true");
     onClose();
   };
 
@@ -41,7 +41,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                 <BookOpen className="w-5 h-5" />
               </div>
               <h2 className="text-base sm:text-lg font-bold tracking-normal text-slate-900 dark:text-white">
-                GuessKorean 플레이 가이드 🎮
+                말맞춤 플레이 가이드 🎮
               </h2>
             </div>
 

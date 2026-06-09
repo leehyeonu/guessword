@@ -166,7 +166,7 @@ export default function GamePage() {
     // 2. 시스템 테마 변경 실시간 반영 (수동 테마 지정이 없을 때만)
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = (e: MediaQueryListEvent) => {
-      const hasSavedTheme = localStorage.getItem("guessword_theme");
+      const hasSavedTheme = localStorage.getItem("malmatch_theme");
       if (!hasSavedTheme) {
         const newTheme = e.matches ? "dark" : "light";
         setTheme(newTheme);
@@ -188,33 +188,33 @@ export default function GamePage() {
     setTheme(newTheme);
     if (newTheme === "dark") {
       document.documentElement.classList.add("dark");
-      localStorage.setItem("guessword_theme", "dark");
+      localStorage.setItem("malmatch_theme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("guessword_theme", "light");
+      localStorage.setItem("malmatch_theme", "light");
     }
   };
 
   // 최초 로드 시 설정 복구 및 서버 세션 체크
   useEffect(() => {
     // 인증 토큰 복구
-    const savedToken = localStorage.getItem("guessword_auth_token");
-    const savedUser = localStorage.getItem("guessword_nickname");
+    const savedToken = localStorage.getItem("malmatch_auth_token");
+    const savedUser = localStorage.getItem("malmatch_nickname");
     if (savedToken && savedUser) {
       setAuthToken(savedToken);
       setCurrentUser(savedUser);
     }
 
     // 익명 닉네임 생성 및 복구
-    let savedAnon = localStorage.getItem("guessword_anon_nickname");
+    let savedAnon = localStorage.getItem("malmatch_anon_nickname");
     if (!savedAnon) {
       savedAnon = `익명#${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      localStorage.setItem("guessword_anon_nickname", savedAnon);
+      localStorage.setItem("malmatch_anon_nickname", savedAnon);
     }
     setAnonNickname(savedAnon);
 
     // 이전 초기화된 세션 복구
-    const savedPast = localStorage.getItem("guessword_past_sessions");
+    const savedPast = localStorage.getItem("malmatch_past_sessions");
     if (savedPast) {
       try {
         setPastSessions(JSON.parse(savedPast));
@@ -224,7 +224,7 @@ export default function GamePage() {
     }
 
     // 튜토리얼 아직 안 봤으면 띄워주기
-    const seenTutorial = localStorage.getItem("guessword_tutorial_seen");
+    const seenTutorial = localStorage.getItem("malmatch_tutorial_seen");
     if (!seenTutorial) {
       setIsTutorialOpen(true);
     }
@@ -256,7 +256,7 @@ export default function GamePage() {
       } catch (error) {
         console.error("게임 세션 로드 실패:", error);
         // 서버 연결 실패 시 로컬 백업 세션 유지
-        const savedGameId = localStorage.getItem("guessword_game_id") || "default-game-id";
+        const savedGameId = localStorage.getItem("malmatch_game_id") || "default-game-id";
         setGameId(savedGameId);
       } finally {
         clearTimeout(coldStartTimer);
@@ -273,8 +273,8 @@ export default function GamePage() {
     let isMounted = true;
     let statsTimer: ReturnType<typeof setInterval> | null = null;
 
-    const savedGameId = localStorage.getItem("guessword_game_id");
-    const savedHistory = localStorage.getItem("guessword_history");
+    const savedGameId = localStorage.getItem("malmatch_game_id");
+    const savedHistory = localStorage.getItem("malmatch_history");
 
     if (savedGameId === gameId && savedHistory) {
       try {
@@ -286,7 +286,7 @@ export default function GamePage() {
           );
           setCurrentGuess(sortedByTime[0]);
           
-          const savedTarget = localStorage.getItem("guessword_target_word") || "";
+          const savedTarget = localStorage.getItem("malmatch_target_word") || "";
           
           if (savedTarget && sortedByTime.some(item => item.word === savedTarget)) {
             setTargetWord(savedTarget);
@@ -302,7 +302,7 @@ export default function GamePage() {
         }
 
         // 로컬 최고 점수 복구
-        const savedBest = localStorage.getItem(`guessword_best_score_${gameId}`);
+        const savedBest = localStorage.getItem(`malmatch_best_score_${gameId}`);
         setLocalBestScore(savedBest ? Number(savedBest) : 0);
       } catch (e) {
         console.error("로컬 기록 파싱 에러:", e);
@@ -318,7 +318,7 @@ export default function GamePage() {
         try {
           const prevHistory = JSON.parse(savedHistory) as GuessHistoryItem[];
           if (prevHistory.length > 0) {
-            const savedBest = localStorage.getItem(`guessword_best_score_${savedGameId}`) || "0";
+            const savedBest = localStorage.getItem(`malmatch_best_score_${savedGameId}`) || "0";
             const newSession: PastSession = {
               id: Date.now().toString(),
               resetTime: new Date().toISOString(),
@@ -329,14 +329,14 @@ export default function GamePage() {
             };
             
             // 기존 pastSessions 상태와 로컬스토리지 업데이트
-            const savedPastStr = localStorage.getItem("guessword_past_sessions");
+            const savedPastStr = localStorage.getItem("malmatch_past_sessions");
             let currentPast: PastSession[] = [];
             if (savedPastStr) {
               currentPast = JSON.parse(savedPastStr);
             }
             const updatedPast = [newSession, ...currentPast].slice(0, 10); // 기기 용량 및 모바일 UI를 위해 최근 10개까지만 보관
             setPastSessions(updatedPast);
-            localStorage.setItem("guessword_past_sessions", JSON.stringify(updatedPast));
+            localStorage.setItem("malmatch_past_sessions", JSON.stringify(updatedPast));
           }
         } catch (e) {
           console.error("이전 세션 백업 에러:", e);
@@ -349,11 +349,11 @@ export default function GamePage() {
       setTargetWord("");
       setIsGameWon(false);
       setLocalBestScore(0);
-      localStorage.setItem("guessword_game_id", gameId);
-      localStorage.setItem("guessword_history", JSON.stringify([]));
-      localStorage.removeItem("guessword_target_word");
+      localStorage.setItem("malmatch_game_id", gameId);
+      localStorage.setItem("malmatch_history", JSON.stringify([]));
+      localStorage.removeItem("malmatch_target_word");
       if (savedGameId) {
-        localStorage.removeItem(`guessword_best_score_${savedGameId}`);
+        localStorage.removeItem(`malmatch_best_score_${savedGameId}`);
       }
     }
 
@@ -436,12 +436,12 @@ export default function GamePage() {
   const handleAuthSuccess = async (token: string, nickname: string) => {
     setAuthToken(token);
     setCurrentUser(nickname);
-    localStorage.setItem("guessword_auth_token", token);
-    localStorage.setItem("guessword_nickname", nickname);
+    localStorage.setItem("malmatch_auth_token", token);
+    localStorage.setItem("malmatch_nickname", nickname);
     
     // 익명 닉네임 → 회원 닉네임 마이그레이션
-    const savedAnon = localStorage.getItem("guessword_anon_nickname") || "";
-    const savedPastStr = localStorage.getItem("guessword_past_sessions");
+    const savedAnon = localStorage.getItem("malmatch_anon_nickname") || "";
+    const savedPastStr = localStorage.getItem("malmatch_past_sessions");
     let pastSessions: any[] = [];
     if (savedPastStr) {
       try { pastSessions = JSON.parse(savedPastStr); } catch(e) {}
@@ -473,8 +473,8 @@ export default function GamePage() {
   const handleLogout = () => {
     setAuthToken(null);
     setCurrentUser(null);
-    localStorage.removeItem("guessword_auth_token");
-    localStorage.removeItem("guessword_nickname");
+    localStorage.removeItem("malmatch_auth_token");
+    localStorage.removeItem("malmatch_nickname");
     triggerToast("로그아웃 되었습니다.");
   };
 
@@ -548,9 +548,9 @@ export default function GamePage() {
         setTargetWord("");
         setIsGameWon(false);
         setGuessInput("");
-        localStorage.setItem("guessword_game_id", data.game_id);
-        localStorage.setItem("guessword_history", JSON.stringify([]));
-        localStorage.removeItem("guessword_target_word");
+        localStorage.setItem("malmatch_game_id", data.game_id);
+        localStorage.setItem("malmatch_history", JSON.stringify([]));
+        localStorage.removeItem("malmatch_target_word");
         return;
       }
 
@@ -566,14 +566,14 @@ export default function GamePage() {
       setCurrentGuess(newGuess);
       setGuessInput("");
       
-      localStorage.setItem("guessword_history", JSON.stringify(updatedHistory));
+      localStorage.setItem("malmatch_history", JSON.stringify(updatedHistory));
 
       playChime(newGuess.score);
 
       if (data.is_correct) {
         setIsGameWon(true);
         setTargetWord(data.target_word);
-        localStorage.setItem("guessword_target_word", data.target_word);
+        localStorage.setItem("malmatch_target_word", data.target_word);
         
         // 정답을 맞췄을 때 /api/score 호출
         if (authToken && gameId) {
@@ -592,7 +592,7 @@ export default function GamePage() {
         const score = data.score;
         if (score >= 10 && score > localBestScore) {
           setLocalBestScore(score);
-          localStorage.setItem(`guessword_best_score_${gameId}`, score.toString());
+          localStorage.setItem(`malmatch_best_score_${gameId}`, score.toString());
           if (score > globalBestScore) {
             setGlobalBestScore(score);
           }
@@ -678,7 +678,7 @@ export default function GamePage() {
         {/* 왼쪽: 로고 및 최고 점수 */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <h1 className="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white select-none">
-            GUESS<span className="text-[var(--apple-blue)]">KOR</span>
+            말<span className="text-[var(--apple-blue)]">맞춤</span>
           </h1>
           {globalBestScore > 0 && (
             <div 
@@ -950,7 +950,7 @@ export default function GamePage() {
                         </div>
 
                         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-                          <div className="hidden sm:flex flex-col items-end text-[9px] leading-tight">
+                          <div className="flex flex-col items-end text-[9px] leading-tight">
                             <span className="text-slate-500">코사인 유사도</span>
                             <span className="font-mono text-slate-600 dark:text-slate-400 font-semibold">
                               {item.similarity.toFixed(4)}
@@ -986,7 +986,7 @@ export default function GamePage() {
                     onClick={() => {
                       if (confirm("이전 시도 기록 목록을 완전히 지우시겠습니까?")) {
                         setPastSessions([]);
-                        localStorage.removeItem("guessword_past_sessions");
+                        localStorage.removeItem("malmatch_past_sessions");
                       }
                     }}
                     className="text-[9px] text-red-500 hover:text-red-600 bg-transparent border-none cursor-pointer p-0 font-semibold uppercase tracking-normal"

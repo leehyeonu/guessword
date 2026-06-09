@@ -1,6 +1,6 @@
-# K-Semantle Frontend (Next.js)
+# 말맞춤 (MalMatch) Frontend — Next.js
 
-K-Semantle 게임의 React/Next.js 기반 프론트엔드 앱입니다.
+말맞춤 게임의 React/Next.js 기반 프론트엔드 앱입니다.
 
 ## 로컬 실행 방법
 

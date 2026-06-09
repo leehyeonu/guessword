@@ -9,7 +9,7 @@ from app.api.auth import verify_token
 import logging
 
 router = APIRouter()
-logger = logging.getLogger("guessword.leaderboard")
+logger = logging.getLogger("malmatch.leaderboard")
 
 _leaderboard_cache = {}
 CACHE_TTL = 60  # 60초 캐싱

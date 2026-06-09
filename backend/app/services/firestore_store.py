@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-logger = logging.getLogger("guessword.firestore")
+logger = logging.getLogger("malmatch.firestore")
 
 
 class FirestoreStore:

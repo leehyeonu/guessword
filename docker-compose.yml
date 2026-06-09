@@ -5,7 +5,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: guessword-backend
+    container_name: malmatch-backend
     ports:
       - "8000:8000"
     volumes:

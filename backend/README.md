@@ -1,5 +1,5 @@
 ---
-title: guessword
+title: malmatch
 emoji: 🎮
 colorFrom: indigo
 colorTo: purple
@@ -7,9 +7,9 @@ sdk: docker
 pinned: false
 ---
 
-# GuessKorean Backend
+# 말맞춤 (MalMatch) Backend
 
-FastAPI와 FastText 한국어 사전 모델로 동작하는 단어 추측 게임(GuessKorean)의 백엔드 서비스입니다.
+FastAPI와 FastText 한국어 사전 모델로 동작하는 단어 추측 게임(말맞춤)의 백엔드 서비스입니다.
 
 ## Firestore Admin 설정
 
