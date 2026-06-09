@@ -12,6 +12,8 @@ from slowapi.errors import RateLimitExceeded
 load_dotenv()
 
 from app.api.routes import router as api_router, limiter
+from app.api.auth import router as auth_router
+from app.api.leaderboard import router as leaderboard_router
 from app.services.firestore_store import FirestoreStore
 from app.services.nlp import FastTextWrapper
 
@@ -106,6 +108,8 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api")
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(leaderboard_router, prefix="/api/leaderboard", tags=["leaderboard"])
 
 
 @app.get("/")

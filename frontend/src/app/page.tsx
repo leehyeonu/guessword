@@ -23,7 +23,8 @@ import Toast from "@/components/Toast";
 import Confetti from "@/components/Confetti";
 import ClearTicker from "@/components/ClearTicker";
 import AttemptTicker from "@/components/AttemptTicker";
-import NicknameModal from "@/components/NicknameModal";
+import AuthModal from "@/components/AuthModal";
+import LeaderboardModal from "@/components/LeaderboardModal";
 
 interface AttemptItem {
   id: string;
@@ -96,8 +97,9 @@ export default function GamePage() {
   const [history, setHistory] = useState<GuessHistoryItem[]>([]);
   const [currentGuess, setCurrentGuess] = useState<GuessHistoryItem | null>(null);
   
-  // 익명 닉네임 상태 (localStorage 유지)
-  const [nickname, setNickname] = useState("");
+  // 인증 상태
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
 
   // 이전 초기화된 세션 목록 상태
   const [pastSessions, setPastSessions] = useState<PastSession[]>([]);
@@ -163,7 +165,8 @@ export default function GamePage() {
 
   // UI 토글
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
-  const [isNicknameModalOpen, setIsNicknameModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isGameWon, setIsGameWon] = useState(false);
@@ -218,18 +221,13 @@ export default function GamePage() {
 
   // 최초 로드 시 설정 복구 및 서버 세션 체크
   useEffect(() => {
-    // 익명 닉네임 로드 또는 생성
-    let savedNickname = localStorage.getItem("guessword_nickname");
-    if (!savedNickname) {
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-      let randomStr = "";
-      for (let i = 0; i < 4; i++) {
-        randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      savedNickname = `익명#${randomStr}`;
-      localStorage.setItem("guessword_nickname", savedNickname);
+    // 인증 토큰 복구
+    const savedToken = localStorage.getItem("guessword_auth_token");
+    const savedUser = localStorage.getItem("guessword_nickname");
+    if (savedToken && savedUser) {
+      setAuthToken(savedToken);
+      setCurrentUser(savedUser);
     }
-    setNickname(savedNickname);
 
     // 이전 초기화된 세션 복구
     const savedPast = localStorage.getItem("guessword_past_sessions");
@@ -445,6 +443,38 @@ export default function GamePage() {
     }
   };
 
+  // Auth 핸들러
+  const handleAuthSuccess = async (token: string, nickname: string) => {
+    setAuthToken(token);
+    setCurrentUser(nickname);
+    localStorage.setItem("guessword_auth_token", token);
+    localStorage.setItem("guessword_nickname", nickname);
+    
+    // 마이그레이션 호출
+    const savedPastStr = localStorage.getItem("guessword_past_sessions");
+    if (savedPastStr) {
+      try {
+        const pastSessions = JSON.parse(savedPastStr);
+        if (pastSessions.length > 0) {
+          await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/auth/migrate?token=${token}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ past_sessions: pastSessions })
+          });
+          triggerToast("과거 플레이 기록이 안전하게 연동되었습니다!");
+        }
+      } catch(e) {}
+    }
+  };
+  
+  const handleLogout = () => {
+    setAuthToken(null);
+    setCurrentUser(null);
+    localStorage.removeItem("guessword_auth_token");
+    localStorage.removeItem("guessword_nickname");
+    triggerToast("로그아웃 되었습니다.");
+  };
+
   // 단어 제출 이벤트 핸들러
   const handleGuessSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -541,6 +571,15 @@ export default function GamePage() {
         setTargetWord(data.target_word);
         localStorage.setItem("guessword_target_word", data.target_word);
         
+        // 정답을 맞췄을 때 /api/score 호출
+        if (authToken && gameId) {
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/leaderboard/score?token=${authToken}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ game_id: gameId, attempts: updatedHistory.length })
+          }).catch(console.error);
+        }
+        
         // 정답 성공 시 스마트폰 진동 피드백
         if (typeof navigator !== "undefined" && navigator.vibrate) {
           navigator.vibrate([100, 50, 100]);
@@ -623,14 +662,16 @@ export default function GamePage() {
         onClose={() => setIsToastOpen(false)} 
       />
 
-      <NicknameModal
-        isOpen={isNicknameModalOpen}
-        onClose={() => setIsNicknameModalOpen(false)}
-        currentNickname={nickname}
-        onSave={(newNick) => {
-          setNickname(newNick);
-          localStorage.setItem("guessword_nickname", newNick);
-        }}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        onSuccess={handleAuthSuccess} 
+      />
+      
+      <LeaderboardModal 
+        isOpen={isLeaderboardModalOpen} 
+        onClose={() => setIsLeaderboardModalOpen(false)} 
+        currentUser={currentUser} 
       />
 
       {/* 헤더 (Apple-style Clean Header) */}
@@ -639,20 +680,29 @@ export default function GamePage() {
           <h1 className="min-w-0 truncate font-bold text-lg md:text-xl tracking-normal text-slate-900 dark:text-white">
             GUESSKOREAN
           </h1>
-          {nickname && (
-            <button
-              onClick={() => setIsNicknameModalOpen(true)}
-              className="group flex items-center gap-1.5 max-w-[140px] px-2 py-1 rounded-full bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] text-slate-650 dark:text-slate-350 transition-colors"
-              title="닉네임 변경"
-            >
-              <span className="truncate text-[10px] sm:text-xs font-semibold">{nickname}</span>
-              <Edit2 className="w-3 h-3 opacity-60 group-hover:opacity-100" />
-            </button>
-          )}
         </div>
 
         {/* 설정 및 보조 기능 */}
         <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
+          {currentUser ? (
+            <div className="flex items-center gap-1.5 px-3 h-10 rounded-lg bg-[var(--apple-gray-btn)]">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200 max-w-[80px] truncate">{currentUser}</span>
+              <button 
+                onClick={handleLogout} 
+                className="text-[10px] font-semibold text-slate-400 hover:text-red-500 transition-colors"
+                title="로그아웃"
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="px-3 h-10 rounded-lg font-bold text-[11px] bg-[var(--apple-blue)] text-white hover:bg-[var(--apple-blue-hover)] transition-colors shrink-0"
+            >
+              로그인 / 가입
+            </button>
+          )}
           {globalBestScore > 0 && (
             <div 
               className="min-w-0 flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 py-2 sm:py-1.5 rounded-lg bg-red-500/10 dark:bg-red-500/15 text-red-650 dark:text-red-400 text-[11px] font-semibold"
@@ -685,6 +735,13 @@ export default function GamePage() {
             title="도움말"
           >
             <HelpCircle className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsLeaderboardModalOpen(true)}
+            className="h-10 w-10 shrink-0 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 dark:text-yellow-500 cursor-pointer transition active:scale-95 border-none shadow-none flex items-center justify-center"
+            title="리더보드"
+          >
+            <Trophy className="w-4 h-4" />
           </button>
         </div>
       </header>

@@ -1,0 +1,140 @@
+import os
+from datetime import datetime, timedelta, timezone
+import jwt
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel, Field
+from passlib.context import CryptContext
+from google.cloud import firestore
+from app.services.firestore_store import FirestoreStore
+
+router = APIRouter()
+
+# JWT Config
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "guessword_super_secret_key_123!")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_DAYS = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+class SignUpRequest(BaseModel):
+    nickname: str = Field(..., min_length=2, max_length=20)
+    password: str = Field(..., min_length=4)
+
+class LoginRequest(BaseModel):
+    nickname: str = Field(...)
+    password: str = Field(...)
+
+class MigrateRequest(BaseModel):
+    past_sessions: list
+
+class AuthResponse(BaseModel):
+    token: str
+    nickname: str
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    kst = timezone(timedelta(hours=9))
+    expire = datetime.now(kst) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_token(token: str) -> str:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        nickname: str = payload.get("sub")
+        if nickname is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return nickname
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@router.post("/signup", response_model=AuthResponse)
+def signup(request: SignUpRequest):
+    db = FirestoreStore().client
+    if not db:
+        raise HTTPException(status_code=500, detail="Database not available")
+        
+    doc_ref = db.collection("users").document(request.nickname)
+    doc = doc_ref.get()
+    if doc.exists:
+        raise HTTPException(status_code=400, detail="Nickname already exists")
+        
+    hashed_password = pwd_context.hash(request.password)
+    
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).isoformat()
+    
+    doc_ref.set({
+        "nickname": request.nickname,
+        "password_hash": hashed_password,
+        "total_wins": 0,
+        "total_attempts_played": 0,
+        "created_at": now_str
+    })
+    
+    access_token = create_access_token(data={"sub": request.nickname})
+    return {"token": access_token, "nickname": request.nickname}
+
+@router.post("/login", response_model=AuthResponse)
+def login(request: LoginRequest):
+    db = FirestoreStore().client
+    if not db:
+        raise HTTPException(status_code=500, detail="Database not available")
+        
+    doc_ref = db.collection("users").document(request.nickname)
+    doc = doc_ref.get()
+    if not doc.exists:
+        raise HTTPException(status_code=401, detail="Invalid nickname or password")
+        
+    user_data = doc.to_dict()
+    if not pwd_context.verify(request.password, user_data.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid nickname or password")
+        
+    access_token = create_access_token(data={"sub": request.nickname})
+    return {"token": access_token, "nickname": request.nickname}
+
+@router.post("/migrate")
+def migrate_data(request: MigrateRequest, token: str):
+    nickname = verify_token(token)
+    db = FirestoreStore().client
+    if not db:
+        raise HTTPException(status_code=500, detail="Database not available")
+        
+    # past_sessions 배열 길이를 total_wins에 더합니다.
+    # 각 세션에서 시도했던 횟수를 total_attempts_played에 더합니다.
+    added_wins = len(request.past_sessions)
+    added_attempts = sum(session.get("attemptsCount", 0) for session in request.past_sessions)
+    
+    doc_ref = db.collection("users").document(nickname)
+    
+    @firestore.transactional
+    def update_user_stats(transaction, ref):
+        snapshot = ref.get(transaction=transaction)
+        if not snapshot.exists:
+            return
+            
+        current_data = snapshot.to_dict()
+        if current_data.get("migrated"):
+            raise ValueError("Already migrated")
+            
+        new_wins = current_data.get("total_wins", 0) + added_wins
+        new_attempts = current_data.get("total_attempts_played", 0) + added_attempts
+        
+        transaction.update(ref, {
+            "total_wins": new_wins,
+            "total_attempts_played": new_attempts,
+            "migrated": True
+        })
+        
+    try:
+        update_user_stats(db.transaction(), doc_ref)
+        return {"success": True, "migrated_wins": added_wins}
+    except ValueError as ve:
+        if str(ve) == "Already migrated":
+            raise HTTPException(status_code=400, detail="이미 오프라인 기록 연동을 완료한 계정입니다.")
+        raise HTTPException(status_code=500, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
