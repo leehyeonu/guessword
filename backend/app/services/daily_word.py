@@ -23,7 +23,7 @@ def get_words_list() -> List[str]:
     if _cached_words:
         return _cached_words
     
-    decryption_key = os.getenv("WORDS_DECRYPTION_KEY", "").strip()
+    decryption_key = os.getenv("WORDS_DECRYPTION_KEY", "").strip().strip("'\"")
     if not decryption_key:
         logger.error("❌ [SYSTEM] WORDS_DECRYPTION_KEY 환경변수가 설정되지 않았습니다. (기본 단어로 대체됨)")
         return ["사과", "우주", "바다", "컴퓨터"]
