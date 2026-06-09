@@ -47,7 +47,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       if (contentType && contentType.includes("application/json")) {
         data = await res.json();
       } else {
-        throw new Error("서버와 통신하는 과정에서 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+        const text = await res.text();
+        const snippet = text.replace(/<[^>]*>/g, "").slice(0, 120).trim();
+        throw new Error(`서버 응답 형식 오류 (상태 코드: ${res.status}, 형식: ${contentType})\n요약: ${snippet || "내용 없음"}`);
       }
 
       if (!res.ok) {
