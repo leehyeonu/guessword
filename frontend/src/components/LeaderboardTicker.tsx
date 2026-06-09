@@ -8,11 +8,8 @@ interface LeaderboardTickerProps {
   currentUser: string | null;
 }
 
-const getApiUrl = () => {
-  const url = process.env.NEXT_PUBLIC_API_URL;
-  if (!url || url === "undefined" || url === "null") return "";
-  return url;
-};
+// API 요청은 항상 Next.js 프록시 경로를 통해야 함 (Private HF Space 접근용)
+const getApiUrl = () => "";
 
 export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProps) {
   const [activeTab, setActiveTab] = useState<"daily" | "overall">("daily");

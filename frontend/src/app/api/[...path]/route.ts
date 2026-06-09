@@ -32,6 +32,9 @@ async function handleProxy(request: NextRequest, pathArray: string[]) {
     const searchParams = request.nextUrl.searchParams.toString();
     const targetUrl = `${hfApiUrl.replace(/\/$/, "")}/api/${path}${searchParams ? `?${searchParams}` : ""}`;
 
+    // 서버 로그 (Vercel Functions 로그에서 확인 가능)
+    console.log(`[Proxy] ${request.method} ${path} -> ${targetUrl} (token: ${hfToken ? "있음" : "없음"})`);
+
     // 요청 헤더 복사 및 Authorization 헤더 추가
     const headers = new Headers(request.headers);
     headers.delete("host"); // host 헤더 충돌 방지
@@ -59,13 +62,30 @@ async function handleProxy(request: NextRequest, pathArray: string[]) {
             cache: 'no-store',
         });
 
-        // 응답 헤더 복사
-        const responseHeaders = new Headers(response.headers);
-        responseHeaders.set("x-debug-target-url", targetUrl);
-        responseHeaders.set("x-debug-has-token", hfToken ? "true" : "false");
-        responseHeaders.set("x-debug-token-len", hfToken ? hfToken.length.toString() : "0");
+        // 응답 Content-Type 확인
+        const contentType = response.headers.get("content-type") || "";
         
-        // 브라우저로 응답 반환
+        // 비-JSON 응답 감지 (HF Space의 404 HTML 페이지 등)
+        if (!contentType.includes("application/json")) {
+            const text = await response.text();
+            console.error(`[Proxy] 비-JSON 응답 수신: status=${response.status}, content-type=${contentType}, body=${text.slice(0, 200)}`);
+            
+            // 적절한 JSON 에러 응답으로 변환
+            return NextResponse.json(
+                { 
+                    detail: response.status === 404 
+                        ? "백엔드 API 경로를 찾을 수 없습니다." 
+                        : response.status === 401 || response.status === 403
+                        ? "백엔드 인증에 실패했습니다. 토큰을 확인해 주세요."
+                        : `백엔드 서버 오류 (${response.status})` 
+                }, 
+                { status: response.status }
+            );
+        }
+        
+        // 정상 JSON 응답 → 그대로 전달
+        const responseHeaders = new Headers(response.headers);
+        
         return new NextResponse(response.body, {
             status: response.status,
             statusText: response.statusText,
@@ -73,17 +93,10 @@ async function handleProxy(request: NextRequest, pathArray: string[]) {
         });
 
     } catch (error: any) {
-        console.error("Proxy error:", error);
+        console.error("[Proxy] 네트워크 오류:", error.message);
         return NextResponse.json(
-            { error: "Proxy server error", detail: error.message }, 
-            { 
-                status: 500,
-                headers: {
-                    "x-debug-target-url": targetUrl,
-                    "x-debug-has-token": hfToken ? "true" : "false",
-                    "x-debug-token-len": hfToken ? hfToken.length.toString() : "0",
-                }
-            }
+            { detail: "백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해 주세요." }, 
+            { status: 502 }
         );
     }
 }

@@ -10,11 +10,9 @@ interface AuthModalProps {
   onSuccess: (token: string, nickname: string) => void;
 }
 
-const getApiUrl = () => {
-  const url = process.env.NEXT_PUBLIC_API_URL;
-  if (!url || url === "undefined" || url === "null") return "";
-  return url;
-};
+// 인증 요청은 항상 Next.js API 프록시 경로를 통해야 함
+// (Private HF Space에 토큰을 주입하기 위해)
+const getApiUrl = () => "";
 
 export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [isLoginTab, setIsLoginTab] = useState(true);
