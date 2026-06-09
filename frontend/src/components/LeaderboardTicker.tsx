@@ -115,13 +115,11 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      {renderRankIcon(idx)}
+                      {/* 순위 메달 대신 회차 정보 표시 */}
+                      <span className="text-[10px] text-yellow-650 dark:text-yellow-400 font-bold bg-yellow-500/10 dark:bg-yellow-500/15 border border-yellow-500/20 px-1.5 py-0.5 rounded-md shrink-0 select-none min-w-[44px] text-center font-mono">
+                        {user.round > 0 ? `#${user.round}` : "#이전"}
+                      </span>
                       <span className="font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-                        {user.round > 0 && (
-                          <span className="text-[9px] text-yellow-600 dark:text-yellow-500 font-extrabold bg-yellow-500/10 px-1 py-0.5 rounded shrink-0">
-                            #{user.round}회차
-                          </span>
-                        )}
                         <span className="truncate">{user.nickname}</span>
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium ml-1 bg-slate-500/10 px-1 py-0.5 rounded shrink-0">
                           {user.word}
