@@ -147,6 +147,7 @@ def guess(request: Request, body: GuessRequest):
         )
 
     target = get_daily_target_word()
+    round_val = get_daily_target_round()
 
     # 자모 분리 방지를 위한 NFC 정규화
     guess = unicodedata.normalize('NFC', body.guess_word.strip())
@@ -185,6 +186,7 @@ def guess(request: Request, body: GuessRequest):
             attempt_count=body.attempt_count,
             ip=client_ip,
             device=user_agent,
+            round_val=round_val,
         )
 
     if is_correct:

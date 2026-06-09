@@ -116,12 +116,17 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       {renderRankIcon(idx)}
-                      <span className="font-semibold text-slate-900 dark:text-white truncate">
-                        {user.nickname}
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium ml-1.5 bg-slate-500/10 px-1 py-0.5 rounded">
+                      <span className="font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+                        {user.round > 0 && (
+                          <span className="text-[9px] text-yellow-600 dark:text-yellow-500 font-extrabold bg-yellow-500/10 px-1 py-0.5 rounded shrink-0">
+                            #{user.round}회차
+                          </span>
+                        )}
+                        <span className="truncate">{user.nickname}</span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium ml-1 bg-slate-500/10 px-1 py-0.5 rounded shrink-0">
                           {user.word}
                         </span>
-                        {isMe && <span className="text-[9px] sm:text-[10px] text-yellow-600 dark:text-yellow-500 font-bold ml-1">(나)</span>}
+                        {isMe && <span className="text-[9px] sm:text-[10px] text-yellow-600 dark:text-yellow-500 font-bold ml-1 shrink-0">(나)</span>}
                       </span>
                     </div>
 

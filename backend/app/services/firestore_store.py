@@ -69,6 +69,7 @@ class FirestoreStore:
         attempt_count: int,
         ip: str,
         device: str,
+        round_val: int = 1,
     ) -> None:
         if not self.enabled:
             return
@@ -107,6 +108,7 @@ class FirestoreStore:
                 self.client.collection("clears").add({
                     "gameId": game_id,
                     "word": self._safe_string(word, "", 30),
+                    "round": int(round_val),
                     "attempts": max(1, int(attempt_count)),
                     "timestamp": self.firestore.SERVER_TIMESTAMP,
                     "nickname": safe_nickname,

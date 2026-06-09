@@ -145,7 +145,8 @@ def get_daily_leaderboard(game_id: str | None = None, limit: int = 10):
                 "nickname": data.get("nickname", "익명"),
                 "attempts": data.get("attempts", 0),
                 "timestamp": timestamp_value,
-                "word": data.get("word", "???")  # 단어 정보가 없는 예전 문서 대응
+                "word": data.get("word", "???"),  # 단어 정보가 없는 예전 문서 대응
+                "round": data.get("round", 0)  # 회차 정보
             })
             
         _leaderboard_cache[cache_key] = {
