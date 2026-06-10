@@ -203,6 +203,7 @@ def rotate_target_word(solved_word: str) -> str:
         
         @_store.firestore.transactional
         def update_in_transaction(transaction, doc_ref, meta_ref, solved_word):
+            # 1. READS FIRST
             snapshot = doc_ref.get(transaction=transaction)
             if not snapshot.exists:
                 return None
@@ -215,22 +216,15 @@ def rotate_target_word(solved_word: str) -> str:
                 logger.info(f"ℹ️ [SYSTEM] 정답 단어가 이미 교체되어 있습니다. (현재 DB: '{current_word}', 시도한 단어: '{solved_word}')")
                 return current_word, current_round
                 
-            # 1. 이전 단어 아카이브 (과거 목록용)
+            meta_snap = meta_ref.get(transaction=transaction)
+            
+            # 2. COMPUTATIONS & PREPARATIONS
             game_hash = get_game_id(solved_word)
             kst = timezone(timedelta(hours=9))
             today_str = datetime.now(kst).strftime("%Y-%m-%d")
             archive_ref = db.collection("daily_words").document(game_hash)
-            
             solved_at_val = _store.firestore.SERVER_TIMESTAMP if _store.firestore else datetime.now(kst).isoformat()
-            transaction.set(archive_ref, {
-                "word": solved_word,
-                "date": today_str,
-                "solved_at": solved_at_val,
-                "round": current_round
-            })
             
-            # 2. 새 단어 선택
-            meta_snap = meta_ref.get(transaction=transaction)
             used_words = []
             round_counter = current_round
             if meta_snap.exists:
@@ -250,7 +244,15 @@ def rotate_target_word(solved_word: str) -> str:
             # 회차 번호 1 증가
             next_round = round_counter + 1
             
-            # 3. active 문서 업데이트 및 metadata 업데이트
+            # 3. WRITES LAST
+            # 이전 단어 아카이브 (과거 목록용)
+            transaction.set(archive_ref, {
+                "word": solved_word,
+                "date": today_str,
+                "solved_at": solved_at_val,
+                "round": current_round
+            })
+            # active 문서 업데이트 및 metadata 업데이트
             transaction.set(doc_ref, {"word": chosen, "date": today_str, "round": next_round})
             transaction.set(meta_ref, {
                 "used_words": used_words,
