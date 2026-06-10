@@ -15,7 +15,11 @@ import {
   Loader2,
   Sun,
   Moon,
-  Edit2
+  Edit2,
+  Copy,
+  Download,
+  Image,
+  ArrowRight
 } from "lucide-react";
 
 import TutorialModal from "@/components/TutorialModal";
@@ -178,6 +182,177 @@ export default function GamePage() {
     }
   }, []);
 
+  const [isCopyingImage, setIsCopyingImage] = useState(false);
+
+  // 공유용 인증 카드 이미지 생성 (Canvas)
+  const generateShareCanvas = (): HTMLCanvasElement => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 800;
+    canvas.height = 800;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return canvas;
+
+    // 1. 배경 그라데이션 그리기 (딥 네이비 -> 딥 퍼플)
+    const grad = ctx.createLinearGradient(0, 0, 800, 800);
+    grad.addColorStop(0, "#0B0F19");
+    grad.addColorStop(1, "#1E1B4B");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 800, 800);
+
+    // 은은한 배경 광 효과
+    ctx.beginPath();
+    ctx.arc(800, 0, 400, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(59, 130, 246, 0.15)";
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(0, 800, 300, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(139, 92, 246, 0.12)";
+    ctx.fill();
+
+    // 2. 글래스모피즘 박스 드로잉
+    const cardX = 100;
+    const cardY = 120;
+    const cardW = 600;
+    const cardH = 560;
+    const cardR = 24;
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 20;
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+    ctx.lineWidth = 2;
+    
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(cardX, cardY, cardW, cardH, cardR);
+    } else {
+      ctx.rect(cardX, cardY, cardW, cardH);
+    }
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. 텍스트 정보 드로잉 (가로 가운데 정렬)
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // 브랜드 로고 및 서브 텍스트
+    ctx.font = "bold 46px 'Inter', 'Noto Sans KR', sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("말맞춤", 400, 200);
+
+    ctx.font = "bold 20px 'Inter', 'Noto Sans KR', sans-serif";
+    ctx.fillStyle = "#3B82F6";
+    ctx.fillText("MALMATCH.VERCEL.APP", 400, 255);
+
+    // 구분선
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(180, 295);
+    ctx.lineTo(620, 295);
+    ctx.stroke();
+
+    // 회차 정보
+    const roundText = `제 ${round}회차 단어 유추 성공!`;
+    ctx.font = "bold 22px 'Inter', 'Noto Sans KR', sans-serif";
+    ctx.fillStyle = "#FBBF24";
+    ctx.fillText(roundText, 400, 345);
+
+    // 정답 단어
+    ctx.font = "bold 76px 'Inter', 'Noto Sans KR', sans-serif";
+    ctx.fillStyle = "#F97316";
+    ctx.fillText(`"${targetWord}"`, 400, 440);
+
+    // 시도 횟수
+    ctx.font = "600 24px 'Inter', 'Noto Sans KR', sans-serif";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+    ctx.fillText(`총 ${history.length}회 만에 정답을 맞췄습니다.`, 400, 535);
+
+    // 워터마크 주소
+    ctx.font = "500 16px 'Inter', 'Noto Sans KR', sans-serif";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.fillText("친구들과 함께 두뇌 플레이를 대결해 보세요!", 400, 625);
+
+    return canvas;
+  };
+
+  // 결과 텍스트 클립보드 복사
+  const handleCopyText = async () => {
+    const shareText = `말맞춤 #${round}회차 클리어! 🎉\n정답 단어: "${targetWord}"\n시도 횟수: ${history.length}회\nhttps://malmatch.vercel.app`;
+    try {
+      await navigator.clipboard.writeText(shareText);
+      triggerToast("결과 텍스트가 클립보드에 복사되었습니다!");
+    } catch (err) {
+      console.error(err);
+      triggerToast("텍스트 복사에 실패했습니다.");
+    }
+  };
+
+  // 인증 이미지 클립보드 복사
+  const handleCopyImage = async () => {
+    setIsCopyingImage(true);
+    try {
+      const canvas = generateShareCanvas();
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          triggerToast("이미지 생성에 실패했습니다.");
+          setIsCopyingImage(false);
+          return;
+        }
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob })
+          ]);
+          triggerToast("인증 이미지가 클립보드에 복사되었습니다! 대화창에 바로 붙여넣어 보세요.");
+        } catch (clipErr) {
+          console.error("클립보드 이미지 쓰기 오류:", clipErr);
+          triggerToast("이미지 복사가 지원되지 않는 환경입니다. 이미지 다운로드를 이용해 주세요.");
+        } finally {
+          setIsCopyingImage(false);
+        }
+      }, "image/png");
+    } catch (err) {
+      console.error(err);
+      triggerToast("이미지 복사 중 에러가 발생했습니다.");
+      setIsCopyingImage(false);
+    }
+  };
+
+  // 인증 이미지 다운로드
+  const handleDownloadImage = () => {
+    try {
+      const canvas = generateShareCanvas();
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = `malmatch_round_${round}_clear.png`;
+      link.href = dataUrl;
+      link.click();
+      triggerToast("인증 이미지가 저장되었습니다!");
+    } catch (err) {
+      console.error(err);
+      triggerToast("이미지 다운로드에 실패했습니다.");
+    }
+  };
+
+  // 수동 다음 라운드 진행
+  const handleNextRound = async () => {
+    setIsLoading(true);
+    try {
+      await fetchGameInfo(false);
+      triggerToast("새로운 단어 매칭이 시작되었습니다. 도전하세요!");
+    } catch (err) {
+      console.error(err);
+      triggerToast("새로운 라운드 정보를 불러오는 데 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 정렬 순서 (score = 점수높은순, time = 최신순)
   const [historySortOrder, setHistorySortOrder] = useState<"score" | "time">("score");
   const [isPastSessionsExpanded, setIsPastSessionsExpanded] = useState(false);
@@ -240,6 +415,13 @@ export default function GamePage() {
     }
   };
 
+  // 소리 토글 및 설정 보존
+  const toggleSound = () => {
+    const newVal = !soundEnabled;
+    setSoundEnabled(newVal);
+    localStorage.setItem("malmatch_sound_enabled", newVal.toString());
+  };
+
   // 최초 로드 시 설정 복구 및 서버 세션 체크
   useEffect(() => {
     // 인증 토큰 복구
@@ -266,6 +448,12 @@ export default function GamePage() {
       } catch (e) {
         console.error("이전 세션 파싱 에러:", e);
       }
+    }
+
+    // 소리 설정 복구
+    const savedSound = localStorage.getItem("malmatch_sound_enabled");
+    if (savedSound !== null) {
+      setSoundEnabled(savedSound === "true");
     }
 
     // 튜토리얼 아직 안 봤으면 띄워주기
@@ -627,10 +815,6 @@ export default function GamePage() {
         if (typeof navigator !== "undefined" && navigator.vibrate) {
           navigator.vibrate([100, 50, 100]);
         }
-
-        setTimeout(() => {
-          fetchGameInfo(false);
-        }, 500);
       } else {
         const score = data.score;
         if (score >= 10 && score > localBestScore) {
@@ -746,7 +930,7 @@ export default function GamePage() {
               {theme === "light" ? <Moon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" /> : <Sun className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
             </button>
             <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
+              onClick={toggleSound}
               className="p-1.5 sm:p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-[var(--apple-gray-btn-hover)] transition-all"
               title={soundEnabled ? "소리 끄기" : "소리 켜기"}
             >
@@ -799,27 +983,68 @@ export default function GamePage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center"
-                  style={{ backgroundColor: theme === "dark" ? "#000000" : "#ffffff" }}
+                  className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md"
+                  style={{ backgroundColor: theme === "dark" ? "rgba(9, 13, 22, 0.95)" : "rgba(255, 255, 255, 0.95)" }}
                 >
                   <motion.div
-                    initial={{ scale: 0.8, y: -10 }}
+                    initial={{ scale: 0.8, y: -15 }}
                     animate={{ scale: 1, y: 0 }}
                     transition={{ type: "spring", delay: 0.1 }}
                     className="p-4 rounded-full bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 mb-4"
                   >
-                    <Trophy className="w-10 h-10 animate-bounce" />
+                    <Trophy className="w-12 h-12 animate-bounce" />
                   </motion.div>
-                  <h3 className="font-bold text-xl md:text-2xl text-slate-900 dark:text-white mb-2">정답을 맞췄습니다!</h3>
-                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-6">
-                    총 <span className="font-semibold text-[var(--apple-blue)]">{history.length}</span>회 만에 정답 단어인 <span className="font-extrabold text-orange-500 dark:text-orange-450">"{targetWord}"</span>을(를) 맞췄습니다.
+                  <h3 className="font-extrabold text-2xl md:text-3xl text-slate-900 dark:text-white mb-2 select-none tracking-tight">정답을 맞췄습니다!</h3>
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-6 max-w-sm">
+                    제 <span className="font-bold text-yellow-600 dark:text-yellow-500">#{round}회차</span> 단어인 <span className="font-extrabold text-orange-500 dark:text-orange-450">"{targetWord}"</span>을(를) <span className="font-bold text-[var(--apple-blue)]">{history.length}</span>회 만에 유추해냈습니다.
                   </p>
                   
-                  <div className="flex flex-col items-center gap-4">
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 bg-[var(--apple-gray-btn)] px-4 py-2 rounded-lg">
-                      💡 다음 새로운 단어가 활성화될 때까지 잠시 기다려주세요.
-                    </p>
+                  {/* 공유 액션 패널 */}
+                  <div className="w-full max-w-sm flex flex-col gap-2.5 mb-7">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={handleCopyText}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
+                        title="결과 텍스트 복사"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>텍스트 복사</span>
+                      </button>
+                      <button
+                        onClick={handleCopyImage}
+                        disabled={isCopyingImage}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm disabled:opacity-50"
+                        title="인증 카드 이미지 클립보드 복사"
+                      >
+                        {isCopyingImage ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Image className="w-3.5 h-3.5" />
+                        )}
+                        <span>이미지 복사</span>
+                      </button>
+                    </div>
+                    <button
+                      onClick={handleDownloadImage}
+                      className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
+                      title="인증 카드 이미지 기기 다운로드"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>인증 카드 이미지 다운로드</span>
+                    </button>
                   </div>
+
+                  {/* 수동 다음 라운드 진입 버튼 */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleNextRound}
+                    disabled={isLoading}
+                    className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-[var(--apple-blue)] to-indigo-600 hover:from-[var(--apple-blue-hover)] hover:to-indigo-700 transition-all cursor-pointer border-none shadow-md shadow-blue-500/10 dark:shadow-none min-w-[200px]"
+                  >
+                    <span>다음 회차 도전하기</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </motion.button>
                 </motion.div>
               )}
             </AnimatePresence>
