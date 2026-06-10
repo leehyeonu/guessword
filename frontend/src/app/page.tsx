@@ -16,7 +16,6 @@ import {
   Sun,
   Moon,
   Edit2,
-  Copy,
   Download,
   Image,
   ArrowRight
@@ -307,17 +306,7 @@ export default function GamePage() {
     return canvas;
   };
 
-  // 결과 텍스트 클립보드 복사
-  const handleCopyText = async () => {
-    const shareText = `말맞춤 #${round}회차 클리어! 🎉\n정답 단어: "${targetWord}"\n시도 횟수: ${history.length}회\nhttps://malmatch.vercel.app`;
-    try {
-      await navigator.clipboard.writeText(shareText);
-      triggerToast("결과 텍스트가 클립보드에 복사되었습니다!");
-    } catch (err) {
-      console.error(err);
-      triggerToast("텍스트 복사에 실패했습니다.");
-    }
-  };
+
 
   // 인증 이미지 클립보드 복사
   const handleCopyImage = async () => {
@@ -1259,58 +1248,38 @@ export default function GamePage() {
                   {/* 공유 액션 패널 */}
                   <div className="w-full max-w-sm flex flex-col gap-2.5 mb-7">
                     {canShareFile ? (
+                      <button
+                        onClick={handleShareImage}
+                        className="flex items-center justify-center gap-1.5 w-full px-4 py-3.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
+                        title="인증 이미지 공유하기"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>이미지 공유하기</span>
+                      </button>
+                    ) : (
                       <div className="grid grid-cols-2 gap-2">
                         <button
-                          onClick={handleCopyText}
-                          className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
-                          title="결과 텍스트 복사"
+                          onClick={handleCopyImage}
+                          disabled={isCopyingImage}
+                          className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm disabled:opacity-50"
+                          title="인증 카드 이미지 클립보드 복사"
                         >
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>텍스트 복사</span>
+                          {isCopyingImage ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Image className="w-3.5 h-3.5" />
+                          )}
+                          <span>이미지 복사</span>
                         </button>
-                        <button
-                          onClick={handleShareImage}
-                          className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
-                          title="인증 이미지 공유하기"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>이미지 공유하기</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={handleCopyText}
-                            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
-                            title="결과 텍스트 복사"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>텍스트 복사</span>
-                          </button>
-                          <button
-                            onClick={handleCopyImage}
-                            disabled={isCopyingImage}
-                            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm disabled:opacity-50"
-                            title="인증 카드 이미지 클립보드 복사"
-                          >
-                            {isCopyingImage ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Image className="w-3.5 h-3.5" />
-                            )}
-                            <span>이미지 복사</span>
-                          </button>
-                        </div>
                         <button
                           onClick={handleDownloadImage}
-                          className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
+                          className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
                           title="인증 카드 이미지 기기 다운로드"
                         >
                           <Download className="w-3.5 h-3.5" />
-                          <span>인증 카드 이미지 다운로드</span>
+                          <span>이미지 다운로드</span>
                         </button>
-                      </>
+                      </div>
                     )}
                   </div>
 
