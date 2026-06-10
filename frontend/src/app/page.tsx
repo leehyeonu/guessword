@@ -263,10 +263,16 @@ export default function GamePage() {
     ctx.fillStyle = "#FBBF24";
     ctx.fillText(roundText, 400, 345);
 
+    // 플레이어 닉네임 표시
+    const userNickname = currentUser || anonNickname || "익명";
+    ctx.font = "600 18px 'Inter', 'Noto Sans KR', sans-serif";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    ctx.fillText(`플레이어: ${userNickname}`, 400, 390);
+
     // 정답 단어
     ctx.font = "bold 76px 'Inter', 'Noto Sans KR', sans-serif";
     ctx.fillStyle = "#F97316";
-    ctx.fillText(`"${targetWord}"`, 400, 440);
+    ctx.fillText(`"${targetWord}"`, 400, 460);
 
     // 시도 횟수
     ctx.font = "600 24px 'Inter', 'Noto Sans KR', sans-serif";
