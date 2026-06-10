@@ -339,6 +339,41 @@ export default function GamePage() {
     }
   };
 
+  // 모바일/시스템 결과 이미지 파일 공유 (Web Share API)
+  const handleShareImage = async () => {
+    try {
+      const canvas = generateShareCanvas();
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          triggerToast("이미지 생성에 실패했습니다.");
+          return;
+        }
+        const file = new File([blob], `malmatch_round_${round}_clear.png`, { type: "image/png" });
+        const nav = navigator as any;
+        if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
+          try {
+            await nav.share({
+              files: [file],
+              title: "말맞춤 클리어 인증",
+              text: `말맞춤 #${round}회차 클리어! 🎉`
+            });
+          } catch (shareErr) {
+            if ((shareErr as any).name !== "AbortError") {
+              console.error("공유 에러:", shareErr);
+              triggerToast("공유 중에 오류가 발생했습니다.");
+            }
+          }
+        } else {
+          // 지원하지 않으면 다운로드로 작동
+          handleDownloadImage();
+        }
+      }, "image/png");
+    } catch (err) {
+      console.error(err);
+      triggerToast("공유 실패");
+    }
+  };
+
   // 수동 다음 라운드 진행
   const handleNextRound = async () => {
     setIsLoading(true);
@@ -366,6 +401,7 @@ export default function GamePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isGameWon, setIsGameWon] = useState(false);
+  const [canShareFile, setCanShareFile] = useState(false);
 
   // 토스트 메시지
   const [toastMessage, setToastMessage] = useState("");
@@ -454,6 +490,19 @@ export default function GamePage() {
     const savedSound = localStorage.getItem("malmatch_sound_enabled");
     if (savedSound !== null) {
       setSoundEnabled(savedSound === "true");
+    }
+
+    // 파일 공유 지원 여부 감지
+    const navDetect = typeof navigator !== "undefined" ? (navigator as any) : null;
+    if (navDetect && navDetect.share && navDetect.canShare) {
+      try {
+        const file = new File([new Blob([])], "test.png", { type: "image/png" });
+        if (navDetect.canShare({ files: [file] })) {
+          setCanShareFile(true);
+        }
+      } catch (e) {
+        console.warn("navigator.canShare check failed:", e);
+      }
     }
 
     // 튜토리얼 아직 안 봤으면 띄워주기
@@ -1001,37 +1050,60 @@ export default function GamePage() {
                   
                   {/* 공유 액션 패널 */}
                   <div className="w-full max-w-sm flex flex-col gap-2.5 mb-7">
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={handleCopyText}
-                        className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
-                        title="결과 텍스트 복사"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>텍스트 복사</span>
-                      </button>
-                      <button
-                        onClick={handleCopyImage}
-                        disabled={isCopyingImage}
-                        className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm disabled:opacity-50"
-                        title="인증 카드 이미지 클립보드 복사"
-                      >
-                        {isCopyingImage ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Image className="w-3.5 h-3.5" />
-                        )}
-                        <span>이미지 복사</span>
-                      </button>
-                    </div>
-                    <button
-                      onClick={handleDownloadImage}
-                      className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
-                      title="인증 카드 이미지 기기 다운로드"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>인증 카드 이미지 다운로드</span>
-                    </button>
+                    {canShareFile ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={handleCopyText}
+                          className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
+                          title="결과 텍스트 복사"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>텍스트 복사</span>
+                        </button>
+                        <button
+                          onClick={handleShareImage}
+                          className="flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
+                          title="인증 이미지 공유하기"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>이미지 공유하기</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={handleCopyText}
+                            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
+                            title="결과 텍스트 복사"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>텍스트 복사</span>
+                          </button>
+                          <button
+                            onClick={handleCopyImage}
+                            disabled={isCopyingImage}
+                            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm disabled:opacity-50"
+                            title="인증 카드 이미지 클립보드 복사"
+                          >
+                            {isCopyingImage ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Image className="w-3.5 h-3.5" />
+                            )}
+                            <span>이미지 복사</span>
+                          </button>
+                        </div>
+                        <button
+                          onClick={handleDownloadImage}
+                          className="flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-[var(--apple-gray-btn)] hover:bg-[var(--apple-gray-btn-hover)] transition-all cursor-pointer border-none shadow-sm"
+                          title="인증 카드 이미지 기기 다운로드"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>인증 카드 이미지 다운로드</span>
+                        </button>
+                      </>
+                    )}
                   </div>
 
                   {/* 수동 다음 라운드 진입 버튼 */}
