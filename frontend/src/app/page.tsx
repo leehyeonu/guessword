@@ -157,17 +157,36 @@ export default function GamePage() {
       });
       if (response.ok) {
         const data = await response.json();
-        if (data.game_id) {
-          setGameId(data.game_id);
-        }
-        if (data.round) {
-          setRound(data.round);
-        }
-        if (data.past_answers) {
-          setPastAnswers(data.past_answers);
-        }
-        if (data.past_rounds) {
-          setPastRounds(data.past_rounds);
+        
+        // 로컬스토리지에 정답 성공 정보(승리 상태)가 남아있으면 해당 세션을 우선 유지
+        const savedTarget = typeof window !== "undefined" ? localStorage.getItem("malmatch_target_word") : null;
+        const savedGameId = typeof window !== "undefined" ? localStorage.getItem("malmatch_game_id") : null;
+        const savedWonRound = typeof window !== "undefined" ? localStorage.getItem("malmatch_won_round") : null;
+
+        if (savedTarget && savedGameId) {
+          setGameId(savedGameId);
+          if (savedWonRound) {
+            setRound(Number(savedWonRound));
+          }
+          if (data.past_answers) {
+            setPastAnswers(data.past_answers);
+          }
+          if (data.past_rounds) {
+            setPastRounds(data.past_rounds);
+          }
+        } else {
+          if (data.game_id) {
+            setGameId(data.game_id);
+          }
+          if (data.round) {
+            setRound(data.round);
+          }
+          if (data.past_answers) {
+            setPastAnswers(data.past_answers);
+          }
+          if (data.past_rounds) {
+            setPastRounds(data.past_rounds);
+          }
         }
       } else {
         throw new Error("Game info fetch failed");
@@ -384,6 +403,53 @@ export default function GamePage() {
   const handleNextRound = async () => {
     setIsLoading(true);
     try {
+      const savedGameId = localStorage.getItem("malmatch_game_id");
+      const savedHistory = localStorage.getItem("malmatch_history");
+
+      // 1. 이전 세션 백업 (존재한다면)
+      if (savedHistory && savedGameId) {
+        try {
+          const prevHistory = JSON.parse(savedHistory) as GuessHistoryItem[];
+          if (prevHistory.length > 0) {
+            const savedBest = localStorage.getItem(`malmatch_best_score_${savedGameId}`) || "0";
+            const newSession: PastSession = {
+              id: Date.now().toString(),
+              resetTime: new Date().toISOString(),
+              gameId: savedGameId,
+              bestScore: Number(savedBest),
+              attemptsCount: prevHistory.length,
+              guesses: prevHistory,
+            };
+            
+            const savedPastStr = localStorage.getItem("malmatch_past_sessions");
+            let currentPast: PastSession[] = [];
+            if (savedPastStr) {
+              currentPast = JSON.parse(savedPastStr);
+            }
+            const updatedPast = [newSession, ...currentPast].slice(0, 10);
+            setPastSessions(updatedPast);
+            localStorage.setItem("malmatch_past_sessions", JSON.stringify(updatedPast));
+          }
+        } catch (e) {
+          console.error("이전 세션 백업 에러:", e);
+        }
+      }
+
+      // 2. 승리 상태 및 기록을 명시적으로 제거하고 초기화
+      localStorage.removeItem("malmatch_target_word");
+      localStorage.removeItem("malmatch_won_round");
+      localStorage.setItem("malmatch_history", JSON.stringify([]));
+      if (savedGameId) {
+        localStorage.removeItem(`malmatch_best_score_${savedGameId}`);
+      }
+
+      setHistory([]);
+      setCurrentGuess(null);
+      setTargetWord("");
+      setIsGameWon(false);
+      setLocalBestScore(0);
+
+      // 3. 서버에서 새로운 게임 정보 가져오기
       await fetchGameInfo(false);
       triggerToast("새로운 단어 매칭이 시작되었습니다. 도전하세요!");
     } catch (err) {
@@ -546,6 +612,10 @@ export default function GamePage() {
           if (savedTarget && sortedByTime.some(item => item.word === savedTarget)) {
             setTargetWord(savedTarget);
             setIsGameWon(true);
+            const savedWonRound = localStorage.getItem("malmatch_won_round");
+            if (savedWonRound) {
+              setRound(Number(savedWonRound));
+            }
           } else {
             setTargetWord("");
             setIsGameWon(false);
@@ -607,6 +677,7 @@ export default function GamePage() {
       localStorage.setItem("malmatch_game_id", gameId);
       localStorage.setItem("malmatch_history", JSON.stringify([]));
       localStorage.removeItem("malmatch_target_word");
+      localStorage.removeItem("malmatch_won_round");
       if (savedGameId) {
         localStorage.removeItem(`malmatch_best_score_${savedGameId}`);
       }
@@ -806,6 +877,7 @@ export default function GamePage() {
         localStorage.setItem("malmatch_game_id", data.game_id);
         localStorage.setItem("malmatch_history", JSON.stringify([]));
         localStorage.removeItem("malmatch_target_word");
+        localStorage.removeItem("malmatch_won_round");
         fetchGameInfo(false);
         return;
       }
@@ -830,6 +902,7 @@ export default function GamePage() {
         setIsGameWon(true);
         setTargetWord(data.target_word);
         localStorage.setItem("malmatch_target_word", data.target_word);
+        localStorage.setItem("malmatch_won_round", round.toString());
         
         // 정답을 맞췄을 때 리더보드 점수 등록
         if (gameId) {
