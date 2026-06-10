@@ -75,6 +75,21 @@ def get_daily_target_word() -> str:
             if word:
                 _cached_daily_word = word
                 _cached_daily_word_round = round_val
+                
+                # 자가 치유(Self-healing) 로직:
+                # 활성 단어가 이미 clears 컬렉션에 있으면, 이전 트랜잭션 에러 등으로 교체가 실패한 것으로 간주하여 즉시 교체합니다.
+                if _store.enabled and _store.FieldFilter is not None:
+                    try:
+                        game_hash = get_game_id(word)
+                        clears_ref = db.collection("clears").where(filter=_store.FieldFilter("gameId", "==", game_hash)).limit(1)
+                        clears_snap = list(clears_ref.stream())
+                        if clears_snap:
+                            logger.warning(f"⚠️ [SYSTEM] 활성 단어 '{word}'이(가) 이미 클리어된 기록이 존재합니다. 자가 치유를 위해 단어를 교체합니다.")
+                            rotated_word = rotate_target_word(word)
+                            return rotated_word
+                    except Exception as ex:
+                        logger.warning(f"⚠️ [SYSTEM] 자가 치유 체크 중 오류 발생 (무시하고 계속 진행): {ex}")
+                
                 logger.info(f"💡 [SYSTEM] 활성 정답 단어가 로드되었습니다: '{word}' (회차: {round_val})")
                 return word
         
