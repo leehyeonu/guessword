@@ -28,6 +28,7 @@ import Confetti from "@/components/Confetti";
 import AttemptTicker from "@/components/AttemptTicker";
 import LeaderboardTicker from "@/components/LeaderboardTicker";
 import AuthModal from "@/components/AuthModal";
+import RoundChangedModal from "@/components/RoundChangedModal";
 
 
 interface AttemptItem {
@@ -460,6 +461,78 @@ export default function GamePage() {
     }
   };
 
+  const [isRoundChangedModalOpen, setIsRoundChangedModalOpen] = useState(false);
+  const [roundChangedInfo, setRoundChangedInfo] = useState<{
+    prevRound: number;
+    prevWord: string;
+    newRound: number;
+    newGameId: string;
+    newPastAnswers: Record<string, string>;
+    newPastRounds: Record<string, number>;
+  } | null>(null);
+
+  const handleAcceptRoundChange = () => {
+    if (!roundChangedInfo) return;
+
+    const { newGameId, newRound, newPastAnswers, newPastRounds } = roundChangedInfo;
+
+    // 1. 진행 중이던 시도가 있으면 세션 백업
+    const savedGameId = localStorage.getItem("malmatch_game_id");
+    const savedHistory = localStorage.getItem("malmatch_history");
+
+    if (savedHistory && savedGameId && savedGameId === gameId) {
+      try {
+        const prevHistory = JSON.parse(savedHistory) as GuessHistoryItem[];
+        if (prevHistory.length > 0) {
+          const savedBest = localStorage.getItem(`malmatch_best_score_${savedGameId}`) || "0";
+          const newSession: PastSession = {
+            id: Date.now().toString(),
+            resetTime: new Date().toISOString(),
+            gameId: savedGameId,
+            bestScore: Number(savedBest),
+            attemptsCount: prevHistory.length,
+            guesses: prevHistory,
+          };
+          
+          const savedPastStr = localStorage.getItem("malmatch_past_sessions");
+          let currentPast: PastSession[] = [];
+          if (savedPastStr) {
+            currentPast = JSON.parse(savedPastStr);
+          }
+          const updatedPast = [newSession, ...currentPast].slice(0, 10);
+          setPastSessions(updatedPast);
+          localStorage.setItem("malmatch_past_sessions", JSON.stringify(updatedPast));
+        }
+      } catch (e) {
+        console.error("이전 세션 백업 에러:", e);
+      }
+    }
+
+    // 2. 새로운 라운드로 강제 갱신
+    localStorage.removeItem("malmatch_target_word");
+    localStorage.removeItem("malmatch_won_round");
+    localStorage.setItem("malmatch_history", JSON.stringify([]));
+    localStorage.setItem("malmatch_game_id", newGameId);
+    if (savedGameId) {
+      localStorage.removeItem(`malmatch_best_score_${savedGameId}`);
+    }
+
+    setHistory([]);
+    setCurrentGuess(null);
+    setTargetWord("");
+    setIsGameWon(false);
+    setLocalBestScore(0);
+    setGameId(newGameId);
+    setRound(newRound);
+    setPastAnswers(newPastAnswers);
+    setPastRounds(newPastRounds);
+
+    setIsRoundChangedModalOpen(false);
+    setRoundChangedInfo(null);
+    
+    triggerToast("새로운 단어 매칭이 시작되었습니다. 도전하세요!");
+  };
+
   // 정렬 순서 (score = 점수높은순, time = 최신순)
   const [historySortOrder, setHistorySortOrder] = useState<"score" | "time">("score");
   const [isPastSessionsExpanded, setIsPastSessionsExpanded] = useState(false);
@@ -691,6 +764,43 @@ export default function GamePage() {
     };
   }, [gameId]);
 
+  // 실시간 다른 참가자 정답 달성 감지 (30초 폴링)
+  useEffect(() => {
+    if (!gameId || isGameWon) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`${getApiUrl()}/api/game_info`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache"
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // 정답 단어 ID가 변경되었고 아직 승리하지 않은 상태라면
+          if (data.game_id && data.game_id !== gameId && !isGameWon) {
+            // 이전 정답 단어 찾아오기
+            const prevWord = data.past_answers?.[gameId] || "알 수 없음";
+            setRoundChangedInfo({
+              prevRound: round,
+              prevWord: prevWord,
+              newRound: data.round || round + 1,
+              newGameId: data.game_id,
+              newPastAnswers: data.past_answers || {},
+              newPastRounds: data.past_rounds || {}
+            });
+            setIsRoundChangedModalOpen(true);
+          }
+        }
+      } catch (err) {
+        console.error("실시간 라운드 변경 확인 실패:", err);
+      }
+    }, 30000); // 30초 주기
+
+    return () => clearInterval(interval);
+  }, [gameId, isGameWon, round]);
+
   // 기본 토스트 알림
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -865,20 +975,39 @@ export default function GamePage() {
         return;
       }
 
-      // 백엔드 정답이 도중에 변경되었을 경우 리로드 유도
+      // 백엔드 정답이 도중에 변경되었을 경우 모달 알림 제공
       if (data.game_id && data.game_id !== gameId) {
-        triggerToast("정답 단어가 변경되어 새로운 게임이 시작됩니다!");
-        setGameId(data.game_id);
-        setHistory([]);
-        setCurrentGuess(null);
-        setTargetWord("");
-        setIsGameWon(false);
-        setGuessInput("");
-        localStorage.setItem("malmatch_game_id", data.game_id);
-        localStorage.setItem("malmatch_history", JSON.stringify([]));
-        localStorage.removeItem("malmatch_target_word");
-        localStorage.removeItem("malmatch_won_round");
-        fetchGameInfo(false);
+        setIsLoading(true);
+        try {
+          const infoRes = await fetch(`${getApiUrl()}/api/game_info`, {
+            cache: "no-store",
+            headers: {
+              "Cache-Control": "no-cache"
+            }
+          });
+          if (infoRes.ok) {
+            const infoData = await infoRes.json();
+            const prevWord = infoData.past_answers?.[gameId] || "알 수 없음";
+            setRoundChangedInfo({
+              prevRound: round,
+              prevWord: prevWord,
+              newRound: infoData.round || round + 1,
+              newGameId: infoData.game_id,
+              newPastAnswers: infoData.past_answers || {},
+              newPastRounds: infoData.past_rounds || {}
+            });
+            setIsRoundChangedModalOpen(true);
+          } else {
+            triggerToast("정답 단어가 변경되어 새로운 게임이 시작됩니다!");
+            window.location.reload();
+          }
+        } catch (e) {
+          console.error("라운드 자동 교환 로드 실패:", e);
+          triggerToast("정답 단어가 변경되어 새로운 게임이 시작됩니다!");
+          window.location.reload();
+        } finally {
+          setIsLoading(false);
+        }
         return;
       }
 
@@ -1489,6 +1618,15 @@ export default function GamePage() {
       <TutorialModal
         isOpen={isTutorialOpen}
         onClose={() => setIsTutorialOpen(false)}
+      />
+
+      {/* 라운드 자동 종료 알림 모달 */}
+      <RoundChangedModal
+        isOpen={isRoundChangedModalOpen}
+        prevRound={roundChangedInfo?.prevRound || round}
+        prevWord={roundChangedInfo?.prevWord || "알 수 없음"}
+        newRound={roundChangedInfo?.newRound || round + 1}
+        onAccept={handleAcceptRoundChange}
       />
     </main>
   );

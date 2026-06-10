@@ -50,6 +50,8 @@ def get_words_list() -> List[str]:
 
 _cached_daily_word = None
 _cached_daily_word_round = 1
+_cached_past_answers = None
+_cached_past_rounds = None
 
 def get_daily_target_word() -> str:
     """현재 활성화된 정답 단어를 가져옵니다. 메모리에 무기한 캐싱하여 DB 조회를 최소화합니다."""
@@ -155,6 +157,10 @@ def get_daily_target_round() -> int:
 
 def get_past_answers() -> Dict[str, str]:
     """이전 세션의 정답 단어를 {game_id(해시): 단어} 형태로 반환합니다."""
+    global _cached_past_answers
+    if _cached_past_answers is not None:
+        return _cached_past_answers
+
     if not _store.enabled:
         return {}
     db = _store.client
@@ -169,6 +175,7 @@ def get_past_answers() -> Dict[str, str]:
                 word = data["word"]
                 game_hash = get_game_id(word)
                 answers[game_hash] = word
+        _cached_past_answers = answers
         return answers
     except Exception as e:
         logger.error(f"❌ [DB_ERROR] Firestore past answers error: {e}")
@@ -176,6 +183,10 @@ def get_past_answers() -> Dict[str, str]:
 
 def get_past_rounds() -> Dict[str, int]:
     """이전 세션 정답 단어의 회차 정보를 {game_id(해시): 회차} 형태로 반환합니다."""
+    global _cached_past_rounds
+    if _cached_past_rounds is not None:
+        return _cached_past_rounds
+
     if not _store.enabled:
         return {}
     db = _store.client
@@ -190,6 +201,7 @@ def get_past_rounds() -> Dict[str, int]:
                 word = data["word"]
                 game_hash = get_game_id(word)
                 rounds[game_hash] = data.get("round", 0)
+        _cached_past_rounds = rounds
         return rounds
     except Exception as e:
         logger.error(f"❌ [DB_ERROR] Firestore past rounds error: {e}")
@@ -197,7 +209,7 @@ def get_past_rounds() -> Dict[str, int]:
 
 def rotate_target_word(solved_word: str) -> str:
     """정답 단어를 변경하고 데이터베이스 및 메모리를 실시간으로 업데이트합니다."""
-    global _cached_daily_word, _cached_daily_word_round
+    global _cached_daily_word, _cached_daily_word_round, _cached_past_answers, _cached_past_rounds
     
     if not _store.enabled:
         words = get_words_list()
@@ -207,6 +219,8 @@ def rotate_target_word(solved_word: str) -> str:
         chosen = random.choice(available)
         _cached_daily_word = chosen
         _cached_daily_word_round += 1
+        _cached_past_answers = None
+        _cached_past_rounds = None
         logger.info(f"🔄 [SYSTEM] (로컬) 정답 단어가 교체되었습니다: '{solved_word}' -> '{chosen}' (회차: {_cached_daily_word_round})")
         return chosen
 
@@ -281,6 +295,8 @@ def rotate_target_word(solved_word: str) -> str:
         if chosen:
             _cached_daily_word = chosen
             _cached_daily_word_round = next_round
+            _cached_past_answers = None
+            _cached_past_rounds = None
         return _cached_daily_word
     except Exception as e:
         logger.error(f"❌ [DB_ERROR] Firestore rotate word error: {e}")
