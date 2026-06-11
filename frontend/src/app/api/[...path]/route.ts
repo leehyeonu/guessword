@@ -55,6 +55,16 @@ async function handleProxy(request: NextRequest, pathArray: string[]) {
     headers.delete("host"); // host 헤더 오버라이드로 인한 라우팅 충돌 방지
     headers.set("X-Request-ID", requestId); // 백엔드 로깅 시스템과의 추적성 유지를 위해 Request ID 주입
     
+    // 클라이언트의 원본 JWT 토큰 보존 처리
+    // HF Spaces Private 게이트웨이는 Authorization 헤더로만 접근 인증을 수행하므로,
+    // 사용자가 보낸 JWT 토큰이 있을 경우 X-User-Auth 커스텀 헤더로 이전하여
+    // 백엔드 애플리케이션에서 별도로 읽을 수 있도록 한다.
+    const clientAuth = request.headers.get("authorization");
+    if (clientAuth) {
+        headers.set("X-User-Auth", clientAuth);
+    }
+
+    // HF 게이트웨이 인증 토큰 주입 (Private Space 접근 필수)
     if (hfToken) {
         headers.set("Authorization", `Bearer ${hfToken}`);
     }

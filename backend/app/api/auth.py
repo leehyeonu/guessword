@@ -71,6 +71,43 @@ def verify_token(token: str) -> str:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
 
+def _extract_bearer(header_value: str) -> str | None:
+    """
+    'Bearer <token>' 형식의 헤더 값에서 토큰 부분만 추출합니다.
+    형식이 맞지 않으면 None을 반환합니다.
+    """
+    if not header_value:
+        return None
+    parts = header_value.split(" ")
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        return parts[1]
+    return None
+
+def _extract_user_token(request: Request) -> str:
+    """
+    요청에서 사용자 JWT 토큰을 추출합니다.
+    Next.js 프록시가 HF Spaces 게이트웨이 인증을 위해 Authorization 헤더를 덮어쓰는 구조이므로,
+    프록시가 원본 JWT를 보존해 둔 X-User-Auth 헤더를 최우선으로 검사합니다.
+    조회 순서: X-User-Auth → Authorization → query param(deprecated)
+    """
+    # 1순위: 프록시가 보존해둔 원본 JWT (X-User-Auth 커스텀 헤더)
+    token = _extract_bearer(request.headers.get("x-user-auth", ""))
+    if token:
+        return token
+
+    # 2순위: 직접 호출 시의 표준 Authorization 헤더 (로컬 개발 환경 등)
+    token = _extract_bearer(request.headers.get("authorization", ""))
+    if token:
+        return token
+
+    # 3순위: 레거시 query parameter (deprecated, 보안 경고 로깅)
+    token = request.query_params.get("token")
+    if token:
+        logger.warning("⚠️ [SECURITY WARNING] Query parameter 'token' is deprecated. Use Authorization header instead.")
+        return token
+
+    raise HTTPException(status_code=401, detail="인증 토큰이 누락되었습니다.")
+
 @router.post("/signup", response_model=AuthResponse)
 def signup(request: Request, body: SignUpRequest):
     """
@@ -173,21 +210,7 @@ def _rename_nickname_in_collection(db, collection_name: str, old_nickname: str, 
 
 @router.post("/migrate")
 def migrate_data(request: Request, body: MigrateRequest):
-    token = None
-    auth_header = request.headers.get("authorization")
-    if auth_header:
-        parts = auth_header.split(" ")
-        if len(parts) == 2 and parts[0].lower() == "bearer":
-            token = parts[1]
-            
-    if not token:
-        token = request.query_params.get("token")
-        if token:
-            logger.warning("⚠️ [SECURITY WARNING] Query parameter 'token' is deprecated. Use Authorization header instead.")
-            
-    if not token:
-        raise HTTPException(status_code=401, detail="인증 토큰이 누락되었습니다.")
-        
+    token = _extract_user_token(request)
     nickname = verify_token(token)
     store = getattr(request.app.state, "firestore_store", None)
     if not store or not store.enabled:
@@ -313,21 +336,7 @@ def withdraw_account(request: Request):
     attempts, clears, closest_guesses, daily_scores(하위 scores) 컬렉션의 기록들은
     리더보드 및 통계 유지를 위해 nickname 필드를 "탈퇴한 사용자"로 익명화 치환(Anonymize)합니다.
     """
-    token = None
-    auth_header = request.headers.get("authorization")
-    if auth_header:
-        parts = auth_header.split(" ")
-        if len(parts) == 2 and parts[0].lower() == "bearer":
-            token = parts[1]
-            
-    if not token:
-        token = request.query_params.get("token")
-        if token:
-            logger.warning("⚠️ [SECURITY WARNING] Query parameter 'token' is deprecated for /withdraw. Use Authorization header instead.")
-            
-    if not token:
-        raise HTTPException(status_code=401, detail="인증 토큰이 누락되었습니다.")
-        
+    token = _extract_user_token(request)
     try:
         nickname = verify_token(token)
     except HTTPException as e:
