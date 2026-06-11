@@ -35,13 +35,22 @@ from datetime import datetime, timezone, timedelta
 kst_tz = timezone(timedelta(hours=9))
 logging.Formatter.converter = lambda *args: datetime.now(kst_tz).timetuple()
 
+# basicConfig 설정 시 request_id 필드가 없는 로그의 예외 발생을 막기 위해 기본 포맷 적용
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - [%(request_id)s] - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("malmatch.main")
 
-# 모든 애플리케이션 및 uvicorn 로그에 RequestIDFilter와 Formatter 일괄 주입
+# request_id가 없는 외부 라이브러리(httpx, huggingface_hub 등) 및 전파(propagated) 로그의 예외 방지를 위해
+# Formatter 레벨에서 request_id가 없을 경우 contextvar 값을 안전하게 주입해 주는 SafeFormatter 정의
+class SafeRequestIDFormatter(logging.Formatter):
+    def format(self, record):
+        if not hasattr(record, "request_id"):
+            record.request_id = request_id_ctx.get()
+        return super().format(record)
+
+# 모든 애플리케이션 및 uvicorn 로그에 RequestIDFilter와 SafeRequestIDFormatter 일괄 주입
 loggers = [
     logging.getLogger(),
     logging.getLogger("uvicorn"),
@@ -52,8 +61,11 @@ loggers = [
     logging.getLogger("malmatch.auth"),
     logging.getLogger("malmatch.leaderboard"),
     logging.getLogger("malmatch.firestore"),
+    logging.getLogger("malmatch.daily_word"),
+    logging.getLogger("malmatch.nlp"),
 ]
-formatter = logging.Formatter("%(asctime)s - [%(request_id)s] - %(name)s - %(levelname)s - %(message)s")
+
+formatter = SafeRequestIDFormatter("%(asctime)s - [%(request_id)s] - %(name)s - %(levelname)s - %(message)s")
 for l in loggers:
     l.addFilter(RequestIDFilter())
     for h in l.handlers:
