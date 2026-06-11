@@ -41,6 +41,40 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
     }
   };
 
+  const formatTimeAgo = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return "";
+      
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffSec = Math.floor(diffMs / 1000);
+      
+      if (diffSec < 60) {
+        return "방금 전";
+      }
+      
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) {
+        return `${diffMin}분 전`;
+      }
+      
+      const diffHrs = Math.floor(diffMin / 60);
+      if (diffHrs < 24) {
+        return `${diffHrs}시간 전`;
+      }
+      
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const hh = String(date.getHours()).padStart(2, "0");
+      const min = String(date.getMinutes()).padStart(2, "0");
+      
+      return `${mm}.${dd} ${hh}:${min}`;
+    } catch (e) {
+      return "";
+    }
+  };
+
   useEffect(() => {
     fetchLeaderboard(activeTab);
   }, [activeTab]);
@@ -128,8 +162,13 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                      <span className={`text-[9px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded-md font-bold ${
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {user.timestamp && (
+                        <span className="text-[8px] sm:text-[9px] text-slate-400 dark:text-slate-500 font-mono tracking-tighter">
+                          {formatTimeAgo(user.timestamp)}
+                        </span>
+                      )}
+                      <span className={`text-[9px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded-md font-bold shrink-0 ${
                         isMe ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-500/10' : 'text-[var(--apple-blue)] bg-blue-500/10'
                       }`}>
                         {user.attempts}회
