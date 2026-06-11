@@ -103,6 +103,11 @@ async function handleProxy(request: NextRequest, pathArray: string[]) {
         const responseHeaders = new Headers(response.headers);
         responseHeaders.set("X-Request-ID", requestId); // 클라이언트 디버깅 유용성을 위한 응답 헤더 추가
         
+        // Node.js fetch가 이미 gzip 등을 압축 해제(Decompress)했을 수 있으므로 
+        // 바디와 헤더의 정합성을 위해 content-encoding 및 content-length 헤더 제거
+        responseHeaders.delete("content-encoding");
+        responseHeaders.delete("content-length");
+        
         return new NextResponse(response.body, {
             status: response.status,
             statusText: response.statusText,
