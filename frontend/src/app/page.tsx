@@ -1102,7 +1102,7 @@ export default function GamePage() {
 
   return (
     <main className="min-h-dvh w-full max-w-5xl mx-auto flex flex-col items-center justify-start px-3 py-3 sm:px-4 md:px-8 md:py-6 z-10 relative overflow-x-hidden">
-      <h1 className="sr-only">말맞춤 (MalMatch) - 실시간 AI 유사도 기반 단어 추측 게임</h1>
+      <h1 className="sr-only">말맞춤 (MalMatch) - 실시간 유사도 기반 단어 추측 게임</h1>
       
       {/* 정답 축하 콘페티 */}
       {isGameWon && <VictoryConfetti />}

@@ -152,7 +152,7 @@ export default async function Image() {
                 alignItems: "center",
               }}
             >
-              🧠 AI 유사도 스코어
+              🧠 유사도 스코어
             </div>
             <div
               style={{

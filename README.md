@@ -2,7 +2,7 @@
 
 <div align="center">
   <img src="frontend/src/app/icon.svg" width="100" height="100" alt="MalMatch Logo" />
-  <h3>AI 유사도 기반 실시간 단어 추측 웹 게임</h3>
+  <h3>유사도 기반 실시간 단어 추측 웹 게임</h3>
   <p>AI 임베딩 기술을 적용해 숨겨진 오늘의 정답 단어를 실시간으로 추론해내는 모던 두뇌 퀴즈 플랫폼입니다.</p>
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.2.7-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)

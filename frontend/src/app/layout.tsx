@@ -24,11 +24,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "말맞춤 (MalMatch) - AI 유사도 단어 추측 게임",
+    default: "말맞춤 (MalMatch) - 유사도 단어 추측 게임",
     template: "%s | 말맞춤 (MalMatch)",
   },
-  description: "AI 유사도를 활용해 숨겨진 비밀 단어를 유추해내는 두뇌 게임입니다. 실시간 랭킹 시스템과 명예의 전당에 도전하여 단어 맞추기 실력을 검증해 보세요!",
-  keywords: ["말맞춤", "MalMatch", "단어추측", "꼬들", "꼬망", "단어 게임", "AI 유사도", "단어 퀴즈", "두뇌 게임"],
+  description: "유사도를 활용해 숨겨진 비밀 단어를 유추해내는 두뇌 게임입니다. 실시간 랭킹 시스템과 명예의 전당에 도전하여 단어 맞추기 실력을 검증해 보세요!",
+  keywords: ["말맞춤", "MalMatch", "단어추측", "꼬들", "꼬망", "단어 게임", "유사도", "단어 퀴즈", "두뇌 게임"],
   authors: [{ name: "MalMatch Team" }],
   creator: "MalMatch Team",
   publisher: "MalMatch Team",
@@ -44,8 +44,8 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "말맞춤 (MalMatch) - AI 유사도 단어 추측 게임",
-    description: "AI 유사도를 활용해 숨겨진 비밀 단어를 유추해내는 두뇌 게임입니다. 실시간 랭킹 시스템과 명예의 전당에 도전하세요!",
+    title: "말맞춤 (MalMatch) - 유사도 단어 추측 게임",
+    description: "유사도를 활용해 숨겨진 비밀 단어를 유추해내는 두뇌 게임입니다. 실시간 랭킹 시스템과 명예의 전당에 도전하세요!",
     url: "/",
     siteName: "말맞춤 (MalMatch)",
     locale: "ko_KR",
@@ -53,8 +53,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "말맞춤 (MalMatch) - AI 유사도 단어 추측 게임",
-    description: "AI 유사도를 활용해 숨겨진 비밀 단어를 유추해내는 두뇌 게임입니다. 실시간 랭킹 시스템과 명예의 전당에 도전하세요!",
+    title: "말맞춤 (MalMatch) - 유사도 단어 추측 게임",
+    description: "유사도를 활용해 숨겨진 비밀 단어를 유추해내는 두뇌 게임입니다. 실시간 랭킹 시스템과 명예의 전당에 도전하세요!",
     creator: "@malmatch",
   },
   robots: {
