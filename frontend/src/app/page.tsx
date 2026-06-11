@@ -790,6 +790,42 @@ export default function GamePage() {
     return () => clearInterval(interval);
   }, [gameId, isGameWon, round]);
 
+  // 세션 완료 시각 포맷팅 함수 (24시간 미만은 시간/분 전, 24시간 이상은 YYYY. MM. DD. HH:MM)
+  const formatSessionTime = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return "알 수 없는 시간";
+      
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffSec = Math.floor(diffMs / 1000);
+      
+      if (diffSec < 60) {
+        return "방금 전";
+      }
+      
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) {
+        return `${diffMin}분 전`;
+      }
+      
+      const diffHrs = Math.floor(diffMin / 60);
+      if (diffHrs < 24) {
+        return `${diffHrs}시간 전`;
+      }
+      
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const hh = String(date.getHours()).padStart(2, "0");
+      const min = String(date.getMinutes()).padStart(2, "0");
+      
+      return `${yyyy}. ${mm}. ${dd}. ${hh}:${min}`;
+    } catch (e) {
+      return "알 수 없는 시간";
+    }
+  };
+
   // 기본 토스트 알림
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -1531,7 +1567,7 @@ export default function GamePage() {
                         </span>
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-[10px] text-slate-500 font-mono">
-                            최고 {session.bestScore}점 · {new Date(session.resetTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            최고 {session.bestScore}점 · {formatSessionTime(session.resetTime)}
                           </span>
                           {pastAnswers[session.gameId] && (
                             <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded font-semibold tracking-wide shadow-sm">
