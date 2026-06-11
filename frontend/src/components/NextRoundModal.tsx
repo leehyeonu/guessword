@@ -3,21 +3,22 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Bell, ArrowRight, Sparkles } from "lucide-react";
 
-interface RoundChangedModalProps {
-  isOpen: boolean;
-  prevRound: number;
-  prevWord: string;
-  newRound: number;
-  onAccept: () => void;
+// 실시간 라운드 변경(단어 교체) 감지 안내 모달의 Props 인터페이스
+interface NextRoundModalProps {
+  isOpen: boolean; // 모달 활성화 제어 플래그 (다른 사용자가 정답 클리어 시 true)
+  prevRound: number; // 방금 종료된 이전 게임 회차 번호
+  prevWord: string; // 방금 맞춘 이전 회차의 정답 단어
+  newRound: number; // 새롭게 개설되어 시작할 회차 번호
+  onAccept: () => void; // 새 게임 수락 버튼 콜백 (세션 로컬스토리지 백업 및 스키마 초기화 실행)
 }
 
-export default function RoundChangedModal({
+export default function NextRoundModal({
   isOpen,
   prevRound,
   prevWord,
   newRound,
   onAccept,
-}: RoundChangedModalProps) {
+}: NextRoundModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (

@@ -4,29 +4,74 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Medal, RotateCw } from "lucide-react";
 
-interface LeaderboardTickerProps {
-  currentUser: string | null;
+// 명예의 전당(리더보드) 컴포넌트의 Props 인터페이스
+interface LeaderboardProps {
+  currentUser: string | null; // 현재 로그인된 사용자명 (본인 순위 특별 테두리 및 텍스트 강조용)
 }
 
 // API 요청은 항상 Next.js 프록시 경로를 통해야 함 (Private HF Space 접근용)
 const getApiUrl = () => "";
 
-export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProps) {
+/**
+ * 지정된 타임아웃(기본값 10초) 내에 응답하지 않으면 요청을 중단(Abort)하는 fetch 래퍼 함수
+ */
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit & { timeout?: number }): Promise<Response> {
+  const { timeout = 10000, ...options } = init || {};
+  
+  if (typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal) {
+    try {
+      return await fetch(input, {
+        ...options,
+        signal: AbortSignal.timeout(timeout)
+      });
+    } catch (err: any) {
+      if (err.name === 'TimeoutError') {
+        throw new Error(`요청 시간이 초과되었습니다 (${timeout / 1000}초).`);
+      }
+      throw err;
+    }
+  }
+
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(input, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (err: any) {
+    clearTimeout(id);
+    if (err.name === 'AbortError') {
+      throw new Error(`요청 시간이 초과되었습니다 (${timeout / 1000}초).`);
+    }
+    throw err;
+  }
+}
+
+export default function Leaderboard({ currentUser }: LeaderboardProps) {
   const [activeTab, setActiveTab] = useState<"daily" | "overall">("daily");
   const [dailyData, setDailyData] = useState<any[]>([]);
   const [overallData, setOverallData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   const fetchLeaderboard = async (tab: "daily" | "overall", isManualRefresh = false) => {
     if (isManualRefresh) setIsRefreshing(true);
     else setIsLoading(true);
+    setHasError(false);
 
     try {
-      const res = await fetch(`${getApiUrl()}/api/leaderboard/${tab}`, {
+      const res = await fetchWithTimeout(`${getApiUrl()}/api/leaderboard/${tab}`, {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" }
       });
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
       const data = await res.json();
       if (tab === "daily") {
         setDailyData(data.leaderboard || []);
@@ -35,6 +80,7 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
       }
     } catch (err) {
       console.error(`Failed to fetch ${tab} leaderboard`, err);
+      setHasError(true);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -90,8 +136,8 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
     <div className="liquid-glass w-full rounded-2xl p-5 overflow-hidden text-slate-900 dark:text-white mt-4">
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2.5 mb-3">
         <div className="flex items-center gap-1.5 text-yellow-500">
-          <Trophy className="w-4 h-4 text-yellow-500" />
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">명예의 전당</h4>
+          <Trophy className="w-4 h-4 text-yellow-500" aria-hidden="true" />
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">명예의 전당</h2>
         </div>
         <button
           onClick={() => fetchLeaderboard(activeTab, true)}
@@ -103,8 +149,17 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
         </button>
       </div>
 
-      <div className="flex border-b border-slate-200/50 dark:border-zinc-800 mb-3 shrink-0">
+      {/* 
+        WAI-ARIA Accessibility Standards 준수:
+        시각 장애인을 비롯한 보조기기(Screen Reader) 사용자에게 탭 전환 인터페이스를 
+        올바르게 인지시키기 위해 role="tablist", role="tab", aria-selected, aria-controls 등을 구성하였습니다.
+      */}
+      <div className="flex border-b border-slate-200/50 dark:border-zinc-800 mb-3 shrink-0" role="tablist" aria-label="리더보드 선택">
         <button
+          role="tab"
+          aria-selected={activeTab === "daily"}
+          aria-controls="daily-tabpanel"
+          id="daily-tab"
           onClick={() => setActiveTab("daily")}
           className={`flex-1 py-1.5 text-[11px] font-bold transition-colors ${
             activeTab === "daily" 
@@ -115,6 +170,10 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
           최근 정답자
         </button>
         <button
+          role="tab"
+          aria-selected={activeTab === "overall"}
+          aria-controls="overall-tabpanel"
+          id="overall-tab"
           onClick={() => setActiveTab("overall")}
           className={`flex-1 py-1.5 text-[11px] font-bold transition-colors ${
             activeTab === "overall" 
@@ -126,10 +185,28 @@ export default function LeaderboardTicker({ currentUser }: LeaderboardTickerProp
         </button>
       </div>
 
-      <div className="space-y-1.5 max-h-[250px] overflow-y-auto pr-1">
+      <div 
+        id={`${activeTab}-tabpanel`}
+        role="tabpanel"
+        aria-labelledby={`${activeTab}-tab`}
+        className="space-y-1.5 max-h-[250px] overflow-y-auto pr-1"
+      >
         {isLoading ? (
-          <div className="text-center text-xs text-slate-500 py-6">
-            명예의 전당 기록을 불러오는 중...
+          /* 스켈레톤 로더 (CLS 레이아웃 시프트 방지) */
+          <div className="space-y-1.5 animate-pulse" aria-hidden="true">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-250/50 dark:bg-zinc-800/60 h-9" />
+            ))}
+          </div>
+        ) : hasError ? (
+          <div className="text-center text-xs text-red-500 py-6 leading-relaxed bg-red-500/5 dark:bg-red-500/10 rounded-xl p-3 border border-red-500/20">
+            데이터를 불러오는 도중 오류가 발생했습니다. <br />
+            <button 
+              onClick={() => fetchLeaderboard(activeTab, true)}
+              className="mt-2 text-[10px] text-yellow-600 dark:text-yellow-500 font-bold underline hover:no-underline"
+            >
+              다시 시도하기
+            </button>
           </div>
         ) : activeTab === "daily" ? (
           dailyData.length > 0 ? (

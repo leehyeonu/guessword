@@ -13,21 +13,25 @@ class FastTextWrapper:
         logger.info("FastText 모델 로드 성공")
         
         # 정답별 최인접 이웃(1000개) 캐싱 딕셔너리
-        # { target_word: { neighbor_word: rank } }
+        # { target_word: (rank_map, rank_1000_sim) }
         self.target_cache = {}
+        
+        # 정답 단어별 벡터 및 L2 Norm 캐시
+        # { target_word: (vector, norm) }
+        self.target_vector_cache = {}
 
     def is_word_in_vocab(self, word: str) -> bool:
-        """단어가 모델 어휘 사전에 존재하는지 확인 (없으면 get_word_id가 -1 반환)"""
+        """어휘 사전(Vocab)에 단어가 등록되어 있는지 체크"""
         if not word:
             return False
         return self.model.get_word_id(word) != -1
 
     def get_word_vector(self, word: str) -> np.ndarray:
-        """단어의 300차원 벡터 추출"""
+        """단어별 300차원 FastText 임베딩 벡터 추출"""
         return np.array(self.model.get_word_vector(word), dtype=np.float32)
 
     def _get_textual_similarity_bonus(self, target_word: str, guess_word: str) -> float:
-        """부분 문자열, 공통 문자, 유사 문자열 구성 요소를 점수 보정에 반영"""
+        """동음이의어 또는 부분 매칭 형태소 보너스 계산"""
         if not target_word or not guess_word:
             return 0.0
 
@@ -42,11 +46,15 @@ class FastTextWrapper:
         return 0.0
 
     def calculate_cosine_similarity(self, word1: str, word2: str) -> float:
-        """두 단어 벡터 간 코사인 유사도 연산"""
-        v1 = self.get_word_vector(word1)
+        """두 단어 간의 코사인 유사도 산출 (L2 Norm 캐싱 적용)"""
+        if word1 in self.target_vector_cache:
+            v1, norm_v1 = self.target_vector_cache[word1]
+        else:
+            v1 = self.get_word_vector(word1)
+            norm_v1 = np.linalg.norm(v1)
+            self.target_vector_cache[word1] = (v1, norm_v1)
+            
         v2 = self.get_word_vector(word2)
-        
-        norm_v1 = np.linalg.norm(v1)
         norm_v2 = np.linalg.norm(v2)
         
         if norm_v1 == 0.0 or norm_v2 == 0.0:
@@ -55,16 +63,18 @@ class FastTextWrapper:
         similarity = np.dot(v1, v2) / (norm_v1 * norm_v2)
         return float(similarity)
 
-    def _get_or_cache_neighbors(self, target_word: str) -> dict:
-        """정답 단어의 최인접 1000개 순위 매핑 및 캐싱"""
+    def _get_or_cache_neighbors(self, target_word: str) -> tuple[dict[str, int], float]:
+        """정답 단어 기준의 Top 1000 유사 단어 순위 맵 조회 및 메모리 캐싱"""
         if target_word in self.target_cache:
             return self.target_cache[target_word]
 
         rank_map = {}
+        rank_1000_sim = 0.35
         try:
             # (similarity, word) 튜플 리스트 반환
             neighbors = self.model.get_nearest_neighbors(target_word, k=1000)
-            
+            if neighbors:
+                rank_1000_sim = float(neighbors[-1][0])
             for rank, (sim, neighbor_word) in enumerate(neighbors, 1):
                 if isinstance(neighbor_word, bytes):
                     neighbor_word = neighbor_word.decode('utf-8')
@@ -77,20 +87,21 @@ class FastTextWrapper:
         except Exception as e:
             logger.error(f"'{target_word}' 이웃 추출 에러: {e}")
             
-        self.target_cache[target_word] = rank_map
-        return rank_map
+        result = (rank_map, rank_1000_sim)
+        self.target_cache[target_word] = result
+        return result
 
     def calculate_score(self, target_word: str, guess_word: str) -> tuple[float, float]:
-        """두 단어의 코사인 유사도와 연속적인 0~100 사이의 게임 보정 점수 계산
+        """코사인 유사도를 기반으로 최종 인게임 스코어(0~100점) 스케일링 적용
         
-        점수 분포 (로그 기반 스케일링):
-        - 100점: 정답(exact match)만 가능
-        - 95~99점: 1~3위 이웃 (거의 동의어/반의어 수준)
-        - 85~95점: 4~15위 이웃 (매우 관련 높은 단어)
-        - 70~85점: 16~100위 이웃 (관련 있는 단어)
-        - 55~70점: 101~500위 이웃 (약간 관련)
-        - 50~55점: 501~1000위 이웃 (희미한 관련)
-        - 0~50점: 1000위 밖 (관련 낮음)
+        스코어 분포 정책 (로그 스케일 및 유사도 보간):
+        - 100점: exact match (정답 단어)
+        - 95~99점: 유사도 Top 3 이내 (동의어/반의어 수준)
+        - 85~95점: 유사도 Top 4 ~ 15 이내
+        - 70~85점: 유사도 Top 16 ~ 100 이내
+        - 55~70점: 유사도 Top 101 ~ 500 이내
+        - 50~55점: 유사도 Top 501 ~ 1000 이내
+        - 0~50점: 1000위 밖 (코사인 유사도로 직접 0~50점 맵핑)
         """
         import math
         
@@ -99,7 +110,7 @@ class FastTextWrapper:
 
         # 1. 순수 코사인 유사도 계산 (보너스 더하기 전)
         cos_sim = self.calculate_cosine_similarity(target_word, guess_word)
-        rank_map = self._get_or_cache_neighbors(target_word)
+        rank_map, rank_1000_sim = self._get_or_cache_neighbors(target_word)
 
         calibrated_score = 0.0
 
@@ -114,11 +125,6 @@ class FastTextWrapper:
             calibrated_score = 50.0 + 49.0 * normalized
         else:
             # [2구간] 1000위 밖: 유사도 기반 스케일링 (0 ~ 50점)
-            rank_1000_sim = 0.35 
-            if len(rank_map) == 1000:
-                word_1000 = list(rank_map.keys())[list(rank_map.values()).index(1000)]
-                rank_1000_sim = self.calculate_cosine_similarity(target_word, word_1000)
-
             min_sim = 0.02
             max_sim = rank_1000_sim
 

@@ -30,7 +30,7 @@ const COLORS = [
 
 const SHAPES: ("circle" | "square" | "triangle")[] = ["circle", "square", "triangle"];
 
-export default function Confetti() {
+export default function VictoryConfetti() {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {

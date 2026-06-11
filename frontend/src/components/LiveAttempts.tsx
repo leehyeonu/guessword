@@ -11,23 +11,24 @@ interface AttemptItem {
   timestamp: Date;
 }
 
-interface AttemptTickerProps {
-  userNickname?: string;
-  attempts: AttemptItem[];
-  isLoading: boolean;
-  isRefreshing: boolean;
-  onRefresh: () => void;
-  errorMsg?: string;
+// 실시간 다른 플레이어의 제출 시도 현황판 Props 인터페이스
+interface LiveAttemptsProps {
+  userNickname?: string; // 현재 유저 닉네임 (본인 시도 하이라이트 표시용)
+  attempts: AttemptItem[]; // 실시간 스트리밍 시도 이력 목록 데이터
+  isLoading: boolean; // 초기 로딩 플래그 (CLS 레이아웃 시프트 예방 스켈레톤 트리거용)
+  isRefreshing: boolean; // 사용자가 수동 새로고침 버튼 클릭 시의 피드백 스피너 트리거 플래그
+  onRefresh: () => void; // 새로고침 API 호출 트리거 액션 핸들러
+  errorMsg?: string; // 네트워크 10초 타임아웃 등 장애 상황 발생 시 화면 출력용 에러 메시지
 }
 
-export default function AttemptTicker({
+export default function LiveAttempts({
   userNickname,
   attempts,
   isLoading,
   isRefreshing,
   onRefresh,
   errorMsg,
-}: AttemptTickerProps) {
+}: LiveAttemptsProps) {
 
   const formatTimeAgo = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -54,8 +55,8 @@ export default function AttemptTicker({
     <div className="liquid-glass w-full rounded-2xl p-5 overflow-hidden text-slate-900 dark:text-white">
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-2.5 mb-3">
         <div className="flex items-center gap-1.5 text-[var(--apple-green)]">
-          <Activity className="w-4 h-4 text-[var(--apple-green)]" />
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">시도 현황</h4>
+          <Activity className="w-4 h-4 text-[var(--apple-green)]" aria-hidden="true" />
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">시도 현황</h2>
         </div>
         <button
           onClick={() => onRefresh()}
@@ -69,8 +70,11 @@ export default function AttemptTicker({
 
       <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
         {isLoading ? (
-          <div className="text-center text-xs text-slate-500 py-6">
-            데이터베이스 연결 중...
+          /* 스켈레톤 로더 (CLS 레이아웃 시프트 방지) */
+          <div className="space-y-1.5 animate-pulse" aria-hidden="true">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-250/50 dark:bg-zinc-800/60 h-9" />
+            ))}
           </div>
         ) : errorMsg ? (
           <div className="text-center text-xs text-red-500 bg-red-500/10 border border-red-500/15 p-4 rounded-xl leading-relaxed">

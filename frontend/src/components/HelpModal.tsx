@@ -3,12 +3,15 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, CalendarClock, Check, Flame, HelpCircle, Target, UserPlus } from "lucide-react";
 
-interface TutorialModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+// 도움말/튜토리얼 오버레이 모달 컴포넌트의 Props 인터페이스
+interface HelpModalProps {
+  isOpen: boolean; // 모달 활성화 플래그
+  onClose: () => void; // 닫기 핸들러
 }
 
-export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
+export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
+  // 모달을 닫을 때 최초 사용자인 경우 로컬 스토리지에 가이드 완료 플래그를 저장하여
+  // 다음 접속 시 가이드 모달이 자동으로 뜨지 않도록 처리합니다.
   const handleClose = () => {
     localStorage.setItem("malmatch_tutorial_seen", "true");
     onClose();

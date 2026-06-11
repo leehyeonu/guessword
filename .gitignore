@@ -25,10 +25,21 @@ backend/.env
 
 # OS and IDE configuration files
 .vscode/
+.idea/
 .DS_Store
 Thumbs.db
 .vercel
 .env*
+
+# Python test caches & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# TypeScript build info
+*.tsbuildinfo
+next-env.d.ts
 
 # Malmatch Data
 backend/app/data/words.txt

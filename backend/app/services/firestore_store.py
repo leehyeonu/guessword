@@ -71,12 +71,14 @@ class FirestoreStore:
         device: str,
         round_val: int = 1,
     ) -> None:
+        """인게임 유저 추측 기록 및 통계 데이터 Firestore 저장"""
         if not self.enabled:
             return
 
         safe_nickname = self._safe_string(nickname, "익명", 20)
         safe_ip = self._safe_string(ip, "unknown", 45)
-        safe_device = self._safe_string(device, "unknown", 250)
+        # 브라우저 핑거프린팅 식별 방지를 위해 User-Agent 마스킹 필터 적용
+        safe_device = self._mask_user_agent(device)
 
         attempt_payload = {
             "gameId": game_id,
@@ -93,7 +95,7 @@ class FirestoreStore:
             logger.info(f"💾 [DB_WRITE] Firestore에 '{safe_nickname}' 사용자의 시도 기록 저장 (단어: '{attempt_payload['word']}')")
             self.client.collection("attempts").add(attempt_payload)
 
-            # 유저의 최신 상태만 머지 (읽기 없이 즉시 쓰기하여 읽기 1회 및 추가 쓰기 2회 절약)
+            # 유저 최근 접속 일시 및 디바이스 정보 실시간 갱신
             user_ref = self.client.collection("users").document(safe_nickname)
             user_payload = {
                 "nickname": safe_nickname,
@@ -104,6 +106,7 @@ class FirestoreStore:
             logger.debug(f"💾 [DB_WRITE] Firestore 유저 정보 업데이트 ('{safe_nickname}')")
             user_ref.set(user_payload, merge=True)
 
+            # 정답 및 최고 점수 통계 데이터베이스 분기 적재
             if is_correct:
                 self.client.collection("clears").add({
                     "gameId": game_id,
@@ -133,6 +136,7 @@ class FirestoreStore:
         current_ip: str,
         current_device: str,
     ) -> None:
+        """접속 기기 정보 또는 IP 변경 감지 시 보안 감사 이벤트 로깅"""
         ip_changed = existing and previous_ip != current_ip
         device_changed = existing and previous_device != current_device
 
@@ -145,13 +149,14 @@ class FirestoreStore:
             "timestamp": self.firestore.SERVER_TIMESTAMP,
             "previousIp": previous_ip if existing else "",
             "currentIp": current_ip,
-            "previousDevice": previous_device if existing else "",
-            "currentDevice": current_device,
+            "previousDevice": self._mask_user_agent(previous_device) if existing else "",
+            "currentDevice": self._mask_user_agent(current_device),
             "ipChanged": ip_changed,
             "deviceChanged": device_changed,
         })
 
     def get_global_best_score(self, game_id: str) -> float:
+        """해당 회차 게임의 글로벌 최고 유사도 점수 조회"""
         if not self.enabled:
             return 0
 
@@ -174,10 +179,8 @@ class FirestoreStore:
                 logger.warning("❌ [DB_ERROR] Firestore 최고 점수 조회 실패: %s", exc)
             return 0
 
-
-
     def get_recent_attempts(self, limit: int = 10) -> list[dict[str, Any]]:
-        """최근 시도 기록 조회 (민감 정보 제외: 단어, IP, device 미반환)"""
+        """실시간 전광판용 최근 시도 이력 조회 (개인정보 보호를 위해 단어/IP/UA는 응답에서 배제)"""
         if not self.enabled:
             return []
 
@@ -194,7 +197,7 @@ class FirestoreStore:
             return []
 
     def _serialize_attempt(self, doc_id: str, data: dict[str, Any]) -> dict[str, Any]:
-        """시도 기록 직렬화 — 닉네임, 점수, 시간만 노출"""
+        """시도 이력 데이터 직렬화 포맷터"""
         timestamp = data.get("timestamp")
         if hasattr(timestamp, "isoformat"):
             timestamp_value = timestamp.isoformat()
@@ -209,7 +212,49 @@ class FirestoreStore:
         }
 
     def _safe_string(self, value: str, fallback: str, max_length: int) -> str:
+        """입력 문자열 길이제한 가드 및 특수문자 정화 필터"""
         cleaned = (value or fallback).strip().replace("/", "_")
         if not cleaned:
             cleaned = fallback
         return cleaned[:max_length]
+
+    def _mask_user_agent(self, ua: str) -> str:
+        """기기 식별자 유출 방지를 위한 User-Agent 마스킹 (OS/브라우저 유형만 매핑)"""
+        if not ua or ua == "unknown":
+            return "unknown"
+        ua_lower = ua.lower()
+        
+        # 운영체제 분류
+        os_name = "Other OS"
+        if "windows" in ua_lower:
+            os_name = "Windows"
+        elif "macintosh" in ua_lower or "mac os" in ua_lower:
+            os_name = "macOS"
+        elif "iphone" in ua_lower or "ipad" in ua_lower:
+            os_name = "iOS"
+        elif "android" in ua_lower:
+            os_name = "Android"
+        elif "linux" in ua_lower:
+            os_name = "Linux"
+
+        # 브라우저 분류
+        browser_name = "Other Browser"
+        if "chrome" in ua_lower or "crios" in ua_lower:
+            browser_name = "Chrome"
+        elif "safari" in ua_lower:
+            browser_name = "Safari"
+        elif "firefox" in ua_lower:
+            browser_name = "Firefox"
+        elif "edge" in ua_lower or "edg" in ua_lower:
+            browser_name = "Edge"
+            
+        return f"{os_name} / {browser_name}"
+
+    def close(self) -> None:
+        """서버 종료 시 Lifespan 트리거를 받아 Firestore 연결 세션을 리소스에서 반환"""
+        if self.client:
+            try:
+                self.client.close()
+                logger.info("🛑 [SYSTEM] Firestore 클라이언트 세션이 안전하게 종료되었습니다.")
+            except Exception as exc:
+                logger.warning("⚠️ [SYSTEM] Firestore 클라이언트 세션 종료 중 예외 발생: %s", exc)

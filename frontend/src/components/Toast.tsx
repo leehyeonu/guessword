@@ -4,19 +4,24 @@ import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, X } from "lucide-react";
 
+// 토스트 알림 컴포넌트의 Props 인터페이스
 interface ToastProps {
-  message: string;
-  isOpen: boolean;
-  onClose: () => void;
-  duration?: number;
+  message: string; // 출력할 에러/경고 메시지
+  isOpen: boolean; // 토스트 표시 제어 상태 플래그
+  onClose: () => void; // 자동 닫힘 및 닫기 버튼 액션 핸들러
+  duration?: number; // 토스트 유지 시간 (기본값: 3000ms)
 }
 
 export default function Toast({ message, isOpen, onClose, duration = 3000 }: ToastProps) {
+  // 토스트 컴포넌트 마운트 및 오픈 시 자동 페이드아웃 타이머 라이프사이클 처리
   useEffect(() => {
     if (isOpen) {
+      // 지정한 duration 후 자동 onClose 트리거
       const timer = setTimeout(() => {
         onClose();
       }, duration);
+      
+      // 언마운트 또는 재활성화 시 클린업을 통한 메모리 누수(Memory Leak) 방지
       return () => clearTimeout(timer);
     }
   }, [isOpen, duration, onClose]);

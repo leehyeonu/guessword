@@ -21,13 +21,17 @@ import {
   ArrowRight
 } from "lucide-react";
 
-import TutorialModal from "@/components/TutorialModal";
+import HelpModal from "@/components/HelpModal";
 import Toast from "@/components/Toast";
-import Confetti from "@/components/Confetti";
-import AttemptTicker from "@/components/AttemptTicker";
-import LeaderboardTicker from "@/components/LeaderboardTicker";
+import VictoryConfetti from "@/components/VictoryConfetti";
+import LiveAttempts from "@/components/LiveAttempts";
+import Leaderboard from "@/components/Leaderboard";
 import AuthModal from "@/components/AuthModal";
-import RoundChangedModal from "@/components/RoundChangedModal";
+import NextRoundModal from "@/components/NextRoundModal";
+import GuessForm from "@/components/GuessForm";
+import DeleteAccountModal from "@/components/DeleteAccountModal";
+import { getApiUrl, fetchWithTimeout } from "@/lib/api";
+import { formatSessionTime, getScoreColor, getScoreIconColor, getScoreLabel } from "@/lib/utils";
 
 
 interface AttemptItem {
@@ -63,14 +67,10 @@ interface PastSession {
   guesses: GuessHistoryItem[];
 }
 
-const getApiUrl = () => {
-  // 백엔드를 은닉하기 위해, 브라우저는 외부(HF)로 직접 요청하지 않고
-  // Next.js 본인 서버 내부의 프록시(/api/...)로 요청하도록 빈 문자열 반환
-  return "";
-};
+
 
 const fetchGameStats = async (currentGameId: string) => {
-  const response = await fetch(`${getApiUrl()}/api/game_stats?game_id=${encodeURIComponent(currentGameId)}`, {
+  const response = await fetchWithTimeout(`${getApiUrl()}/api/game_stats?game_id=${encodeURIComponent(currentGameId)}`, {
     cache: "no-store",
     headers: { "Cache-Control": "no-cache" }
   });
@@ -85,7 +85,6 @@ export default function GamePage() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [gameId, setGameId] = useState("");
   const [targetWord, setTargetWord] = useState("");
-  const [guessInput, setGuessInput] = useState("");
   const [history, setHistory] = useState<GuessHistoryItem[]>([]);
   const [currentGuess, setCurrentGuess] = useState<GuessHistoryItem | null>(null);
   
@@ -149,7 +148,7 @@ export default function GamePage() {
     }
     
     try {
-      const response = await fetch(`${getApiUrl()}/api/game_info`, {
+      const response = await fetchWithTimeout(`${getApiUrl()}/api/game_info`, {
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache"
@@ -450,7 +449,7 @@ export default function GamePage() {
     }
   };
 
-  const [isRoundChangedModalOpen, setIsRoundChangedModalOpen] = useState(false);
+  const [isNextRoundModalOpen, setIsNextRoundModalOpen] = useState(false);
   const [roundChangedInfo, setRoundChangedInfo] = useState<{
     prevRound: number;
     prevWord: string;
@@ -516,7 +515,7 @@ export default function GamePage() {
     setPastAnswers(newPastAnswers);
     setPastRounds(newPastRounds);
 
-    setIsRoundChangedModalOpen(false);
+    setIsNextRoundModalOpen(false);
     setRoundChangedInfo(null);
     
     triggerToast("새로운 단어 매칭이 시작되었습니다. 도전하세요!");
@@ -530,8 +529,9 @@ export default function GamePage() {
   const [pastRounds, setPastRounds] = useState<Record<string, number>>({});
 
   // UI 토글
-  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isGameWon, setIsGameWon] = useState(false);
@@ -542,10 +542,6 @@ export default function GamePage() {
   const [isToastOpen, setIsToastOpen] = useState(false);
 
   const historyEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // 입력창 흔들림 효과 트리거용
-  const [shouldShakeInput, setShouldShakeInput] = useState(false);
 
   // 테마 초기 설정 및 시스템 설정 변화 감지
   useEffect(() => {
@@ -642,7 +638,7 @@ export default function GamePage() {
     // 튜토리얼 아직 안 봤으면 띄워주기
     const seenTutorial = localStorage.getItem("malmatch_tutorial_seen");
     if (!seenTutorial) {
-      setIsTutorialOpen(true);
+      setIsHelpModalOpen(true);
     }
 
     // 서버에서 현재 활성화된 게임 세션 ID 가져오기
@@ -759,7 +755,7 @@ export default function GamePage() {
 
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`${getApiUrl()}/api/game_info`, {
+        const response = await fetchWithTimeout(`${getApiUrl()}/api/game_info`, {
           cache: "no-store",
           headers: {
             "Cache-Control": "no-cache"
@@ -779,7 +775,7 @@ export default function GamePage() {
               newPastAnswers: data.past_answers || {},
               newPastRounds: data.past_rounds || {}
             });
-            setIsRoundChangedModalOpen(true);
+            setIsNextRoundModalOpen(true);
           }
         }
       } catch (err) {
@@ -790,41 +786,7 @@ export default function GamePage() {
     return () => clearInterval(interval);
   }, [gameId, isGameWon, round]);
 
-  // 세션 완료 시각 포맷팅 함수 (24시간 미만은 시간/분 전, 24시간 이상은 YYYY. MM. DD. HH:MM)
-  const formatSessionTime = (isoString: string) => {
-    try {
-      const date = new Date(isoString);
-      if (isNaN(date.getTime())) return "알 수 없는 시간";
-      
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffSec = Math.floor(diffMs / 1000);
-      
-      if (diffSec < 60) {
-        return "방금 전";
-      }
-      
-      const diffMin = Math.floor(diffSec / 60);
-      if (diffMin < 60) {
-        return `${diffMin}분 전`;
-      }
-      
-      const diffHrs = Math.floor(diffMin / 60);
-      if (diffHrs < 24) {
-        return `${diffHrs}시간 전`;
-      }
-      
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, "0");
-      const dd = String(date.getDate()).padStart(2, "0");
-      const hh = String(date.getHours()).padStart(2, "0");
-      const min = String(date.getMinutes()).padStart(2, "0");
-      
-      return `${yyyy}. ${mm}. ${dd}. ${hh}:${min}`;
-    } catch (e) {
-      return "알 수 없는 시간";
-    }
-  };
+
 
   // 기본 토스트 알림
   const triggerToast = (msg: string) => {
@@ -832,23 +794,25 @@ export default function GamePage() {
     setIsToastOpen(true);
   };
 
-  // 입력 에러 트리거 (흔들기 + 진동 + 토스트)
+  // 입력 에러 트리거 (진동 + 토스트)
   const triggerError = (msg: string) => {
     triggerToast(msg);
-    setShouldShakeInput(true);
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate(50);
     }
-    setTimeout(() => {
-      setShouldShakeInput(false);
-    }, 400);
   };
 
   // 유사도에 따른 효과음 재생
   const playChime = (score: number) => {
     if (!soundEnabled) return;
+    if (typeof window === "undefined") return;
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        console.warn("Web Audio API is not supported in this browser.");
+        return;
+      }
+      const audioCtx = new AudioContextClass();
       
       if (score === 100) {
         // 정답 시 도-미-솔-도 아르페지오 화음 스케줄링
@@ -911,9 +875,12 @@ export default function GamePage() {
     // 익명 기록이 있거나 과거 세션이 있으면 마이그레이션 호출
     if (savedAnon || pastSessions.length > 0) {
       try {
-        const res = await fetch(`${getApiUrl()}/api/auth/migrate?token=${token}`, {
+        const res = await fetchWithTimeout(`${getApiUrl()}/api/auth/migrate`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({ 
             past_sessions: pastSessions,
             anon_nickname: savedAnon 
@@ -939,24 +906,33 @@ export default function GamePage() {
     triggerToast("로그아웃 되었습니다.");
   };
 
-  // 단어 제출 이벤트 핸들러
-  const handleGuessSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // 맥/iOS 등 자모 분리 방지를 위해 NFC 표준형으로 정규화
-    const cleanGuess = guessInput.normalize("NFC").trim();
-    if (!cleanGuess) return;
-
-    // 한글 단어 이외의 부적절한 입력 차단 (완전한 가-힣 글자만 허용)
-    const koreanRegex = /^[가-힣]+$/;
-    if (!koreanRegex.test(cleanGuess)) {
-      triggerError("올바른 한국어 단어만 입력해 주세요. (자/모음 단독, 숫자, 영어, 기호 제외)");
-      setGuessInput("");
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 50);
-      return;
+  const handleWithdrawalConfirm = async () => {
+    if (!authToken) return;
+    try {
+      const res = await fetchWithTimeout(`${getApiUrl()}/api/auth/withdraw`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${authToken}`
+        }
+      });
+      if (res.ok) {
+        setAuthToken(null);
+        setCurrentUser(null);
+        localStorage.removeItem("malmatch_auth_token");
+        localStorage.removeItem("malmatch_nickname");
+        triggerToast("회원 탈퇴 및 모든 데이터가 안전하게 처리되었습니다.");
+      } else {
+        const errData = await res.json();
+        throw new Error(errData.detail || "서버 오류");
+      }
+    } catch (err: any) {
+      console.error("회원 탈퇴 에러:", err);
+      throw new Error(err.message || "회원 탈퇴 중 오류가 발생했습니다.");
     }
-    
+  };
+
+  // 단어 제출 이벤트 핸들러 (GuessForm으로부터 단어를 수신)
+  const handleGuessSubmit = async (cleanGuess: string) => {
     if (isGameWon) {
       triggerError("이미 정답을 맞추셨습니다! 다음 도전을 기다려주세요.");
       return;
@@ -964,7 +940,6 @@ export default function GamePage() {
 
     if (history.some((item) => item.word === cleanGuess)) {
       triggerError("이미 입력했던 단어입니다.");
-      setGuessInput("");
       return;
     }
 
@@ -975,7 +950,7 @@ export default function GamePage() {
     }, 10000);
 
     try {
-      const response = await fetch(`${getApiUrl()}/api/guess`, {
+      const response = await fetchWithTimeout(`${getApiUrl()}/api/guess`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -990,21 +965,21 @@ export default function GamePage() {
 
       if (response.status === 429) {
         triggerError("요청 속도가 너무 빠릅니다. 잠시 후 다시 전송해 주세요.");
-        return;
+        throw new Error("Rate limit exceeded");
       }
 
       const data = await response.json();
 
       if (!response.ok) {
         triggerError(data.detail || "사전에 없는 단어입니다.");
-        return;
+        throw new Error(data.detail || "Word not in vocab");
       }
 
       // 백엔드 정답이 도중에 변경되었을 경우 모달 알림 제공
       if (data.game_id && data.game_id !== gameId) {
         setIsLoading(true);
         try {
-          const infoRes = await fetch(`${getApiUrl()}/api/game_info`, {
+          const infoRes = await fetchWithTimeout(`${getApiUrl()}/api/game_info`, {
             cache: "no-store",
             headers: {
               "Cache-Control": "no-cache"
@@ -1021,7 +996,7 @@ export default function GamePage() {
               newPastAnswers: infoData.past_answers || {},
               newPastRounds: infoData.past_rounds || {}
             });
-            setIsRoundChangedModalOpen(true);
+            setIsNextRoundModalOpen(true);
           } else {
             triggerToast("정답 단어가 변경되어 새로운 게임이 시작됩니다!");
             window.location.reload();
@@ -1046,7 +1021,6 @@ export default function GamePage() {
       const updatedHistory = [...history, newGuess];
       setHistory(updatedHistory);
       setCurrentGuess(newGuess);
-      setGuessInput("");
       
       localStorage.setItem("malmatch_history", JSON.stringify(updatedHistory));
 
@@ -1061,21 +1035,15 @@ export default function GamePage() {
         // 정답을 맞췄을 때 리더보드 점수 등록
         if (gameId) {
           const submittingNickname = currentUser || anonNickname;
-          console.log("[리더보드] 점수 등록 시도:", { 
-            authToken: authToken ? "있음" : "없음", 
-            currentUser, 
-            anonNickname, 
-            submittingNickname,
-            gameId,
-            attempts: updatedHistory.length 
-          });
           try {
-            const scoreUrl = authToken 
-              ? `${getApiUrl()}/api/leaderboard/score?token=${authToken}`
-              : `${getApiUrl()}/api/leaderboard/score`;
-            const scoreRes = await fetch(scoreUrl, {
+            const scoreUrl = `${getApiUrl()}/api/leaderboard/score`;
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (authToken) {
+              headers["Authorization"] = `Bearer ${authToken}`;
+            }
+            const scoreRes = await fetchWithTimeout(scoreUrl, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers,
               body: JSON.stringify({ 
                 game_id: gameId, 
                 attempts: updatedHistory.length,
@@ -1085,8 +1053,6 @@ export default function GamePage() {
             if (!scoreRes.ok) {
               const errText = await scoreRes.text();
               console.error("리더보드 등록 실패:", scoreRes.status, errText);
-            } else {
-              console.log("[리더보드] 등록 성공!");
             }
           } catch (scoreErr) {
             console.error("리더보드 등록 에러:", scoreErr);
@@ -1110,14 +1076,11 @@ export default function GamePage() {
 
       loadAllStats();
     } catch (err) {
-      triggerError("서버 통신 에러가 발생했습니다. 백엔드가 작동 중인지 확인하세요.");
       console.error(err);
+      throw err;
     } finally {
       clearTimeout(coldStartTimer);
       setIsLoading(false);
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 50);
     }
   };
 
@@ -1133,40 +1096,16 @@ export default function GamePage() {
     );
   };
 
-  // 점수대별 CSS 스타일링 지정 (Apple System Color 가이드 준수)
-  const getScoreColor = (score: number) => {
-    if (score >= 90) return "text-red-650 dark:text-red-400 border-red-500/20 bg-red-500/5 dark:bg-red-500/10";
-    if (score >= 75) return "text-orange-650 dark:text-orange-400 border-orange-500/20 bg-orange-500/5 dark:bg-orange-500/10";
-    if (score >= 55) return "text-amber-650 dark:text-amber-400 border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/10";
-    if (score >= 35) return "text-blue-650 dark:text-blue-400 border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/10";
-    if (score >= 15) return "text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700/60 bg-slate-400/10 dark:bg-slate-500/10";
-    return "text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/5";
-  };
 
-  // 점수대별 불꽃 아이콘 활성화
-  const getScoreIconColor = (score: number) => {
-    if (score >= 75) return "text-red-500 dark:text-red-400 fill-red-500/10 animate-pulse";
-    if (score >= 55) return "text-orange-500 dark:text-orange-400";
-    if (score >= 35) return "text-blue-500 dark:text-blue-400";
-    return "text-slate-400 dark:text-slate-500";
-  };
-
-  const getScoreLabel = (score: number) => {
-    if (score >= 90) return "정답이 코앞에 있습니다!";
-    if (score >= 75) return "매우 유사함 (근접 순위권)";
-    if (score >= 55) return "따뜻함 (상위 1000위 이내)";
-    if (score >= 35) return "약간 연관 있음";
-    if (score >= 15) return "연관성 낮음";
-    return "연관성 없음";
-  };
 
   const activeScore = currentGuess ? currentGuess.score : 0;
 
   return (
     <main className="min-h-dvh w-full max-w-5xl mx-auto flex flex-col items-center justify-start px-3 py-3 sm:px-4 md:px-8 md:py-6 z-10 relative overflow-x-hidden">
+      <h1 className="sr-only">말맞춤 (MalMatch) - 실시간 AI 유사도 기반 단어 추측 게임</h1>
       
       {/* 정답 축하 콘페티 */}
-      {isGameWon && <Confetti />}
+      {isGameWon && <VictoryConfetti />}
 
       {/* 상단 알림 토스트 */}
       <Toast 
@@ -1186,9 +1125,9 @@ export default function GamePage() {
         
         {/* 왼쪽: 로고 및 최고 점수 */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <h1 className="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white select-none">
+          <div className="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white select-none">
             말<span className="text-[var(--apple-blue)]">맞춤</span>
-          </h1>
+          </div>
           {globalBestScore > 0 && (
             <div 
               className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[10px] sm:text-[11px] font-semibold"
@@ -1203,39 +1142,51 @@ export default function GamePage() {
         {/* 오른쪽: 툴바 및 유저 컨트롤 */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* 아이콘 툴바 */}
-          <div className="flex items-center gap-0.5 bg-[var(--apple-gray-btn)] rounded-lg p-0.5">
+          <div className="flex items-center gap-0.5 bg-[var(--apple-gray-btn)] rounded-lg p-0.5" role="toolbar" aria-label="게임 설정 도구모음">
             <button
               onClick={toggleTheme}
               className="p-1.5 sm:p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-[var(--apple-gray-btn-hover)] transition-all"
               title={theme === "light" ? "다크 모드" : "라이트 모드"}
+              aria-label={theme === "light" ? "다크 모드로 전환" : "라이트 모드로 전환"}
+              aria-pressed={theme === "dark"}
             >
-              {theme === "light" ? <Moon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" /> : <Sun className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
+              {theme === "light" ? <Moon className="w-4 h-4 sm:w-[18px] sm:h-[18px]" aria-hidden="true" /> : <Sun className="w-4 h-4 sm:w-[18px] sm:h-[18px]" aria-hidden="true" />}
             </button>
             <button
               onClick={toggleSound}
               className="p-1.5 sm:p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-[var(--apple-gray-btn-hover)] transition-all"
               title={soundEnabled ? "소리 끄기" : "소리 켜기"}
+              aria-label={soundEnabled ? "소리 끄기" : "소리 켜기"}
+              aria-pressed={!soundEnabled}
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4 sm:w-[18px] sm:h-[18px]" /> : <VolumeX className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />}
+              {soundEnabled ? <Volume2 className="w-4 h-4 sm:w-[18px] sm:h-[18px]" aria-hidden="true" /> : <VolumeX className="w-4 h-4 sm:w-[18px] sm:h-[18px]" aria-hidden="true" />}
             </button>
             <button
-              onClick={() => setIsTutorialOpen(true)}
+              onClick={() => setIsHelpModalOpen(true)}
               className="p-1.5 sm:p-2 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-[var(--apple-gray-btn-hover)] transition-all"
               title="도움말"
+              aria-label="도움말 열기"
             >
-              <HelpCircle className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+              <HelpCircle className="w-4 h-4 sm:w-[18px] sm:h-[18px]" aria-hidden="true" />
             </button>
           </div>
 
           {/* 유저 로그인/아웃 */}
           {currentUser ? (
-            <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-[var(--apple-gray-btn)]">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-[var(--apple-gray-btn)]">
               <span className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 max-w-[50px] sm:max-w-[80px] truncate">{currentUser}</span>
               <button 
                 onClick={handleLogout} 
                 className="text-[10px] sm:text-[11px] font-semibold text-slate-400 hover:text-red-500 transition-colors shrink-0"
               >
                 로그아웃
+              </button>
+              <span className="text-[10px] text-slate-300 dark:text-zinc-700 shrink-0">|</span>
+              <button 
+                onClick={() => setIsDeleteAccountModalOpen(true)} 
+                className="text-[10px] sm:text-[11px] font-semibold text-slate-400 hover:text-red-600 transition-colors shrink-0"
+              >
+                탈퇴
               </button>
             </div>
           ) : (
@@ -1351,7 +1302,7 @@ export default function GamePage() {
                 >
                   <span className="text-[10px] text-slate-500 dark:text-slate-450 tracking-normal font-semibold uppercase">최근 입력 단어</span>
                   <div className="flex max-w-full items-center justify-center gap-2 my-1.5">
-                    <h2 className="min-w-0 max-w-full truncate text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-normal">{currentGuess.word}</h2>
+                    <div className="min-w-0 max-w-full truncate text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-normal" role="status" aria-live="polite">{currentGuess.word}</div>
                     <Flame className={`w-5 h-5 ${getScoreIconColor(currentGuess.score)}`} />
                   </div>
                   
@@ -1415,31 +1366,12 @@ export default function GamePage() {
               )}
             </div>
 
-            {/* 추측 입력 폼 (Apple Messages Style Input) */}
-            <form onSubmit={handleGuessSubmit} className="w-full relative mt-3 sm:mt-4">
-              <div className="relative flex items-center">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  placeholder={isGameWon ? "정답을 맞췄습니다." : "추측 단어 입력..."}
-                  value={guessInput}
-                  onChange={(e) => setGuessInput(e.target.value)}
-                  disabled={isLoading || isGameWon}
-                  className={`w-full pl-4 pr-14 py-3 rounded-xl text-slate-900 dark:text-white bg-[rgba(120,120,128,0.06)] dark:bg-[rgba(120,120,128,0.14)] placeholder-slate-400 dark:placeholder-slate-500 focus:placeholder-slate-300 dark:focus:placeholder-slate-600 outline-none text-base disabled:opacity-50 transition-all border-none focus:ring-1.5 focus:ring-[var(--apple-blue)] ${shouldShakeInput ? "shake-element" : ""}`}
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || isGameWon || !guessInput.trim()}
-                  className="absolute right-1.5 top-1/2 h-9 w-9 -translate-y-1/2 rounded-lg bg-[var(--apple-blue)] hover:bg-[var(--apple-blue-hover)] text-white cursor-pointer disabled:opacity-20 transition-all duration-150 active:scale-95 border-none shadow-sm flex items-center justify-center"
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Send className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              </div>
-            </form>
+            {/* 추측 입력 폼 (격리된 클라이언트 컴포넌트) */}
+            <GuessForm
+              onSubmit={handleGuessSubmit}
+              isLoading={isLoading}
+              isGameWon={isGameWon}
+            />
           </div>
 
           {/* 시도 기록 리스트 */}
@@ -1448,7 +1380,7 @@ export default function GamePage() {
               <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <ListFilter className="w-4 h-4 text-slate-500" />
-                  <h3 className="text-xs md:text-sm font-semibold uppercase tracking-normal text-slate-500 dark:text-slate-450 whitespace-nowrap">내 시도 목록</h3>
+                  <h2 className="text-xs md:text-sm font-semibold uppercase tracking-normal text-slate-500 dark:text-slate-450 whitespace-nowrap">내 시도 목록</h2>
                 </div>
                 
                 {/* 정렬 전환 탭 (Apple Segmented Control Style) */}
@@ -1539,7 +1471,7 @@ export default function GamePage() {
             {/* 이전 초기화된 시도 기록 (모아보기) */}
             {pastSessions.length > 0 && (
               <div className="mt-6 pt-5 border-t border-slate-200 dark:border-zinc-800 w-full">
-                <h4 className="text-[11px] font-bold uppercase tracking-normal text-slate-500 dark:text-slate-450 mb-3 flex items-center justify-between">
+                <h3 className="text-[11px] font-bold uppercase tracking-normal text-slate-500 dark:text-slate-450 mb-3 flex items-center justify-between">
                   <span>이전 시도 기록 ({pastSessions.length}개 세션)</span>
                   <button 
                     onClick={() => {
@@ -1552,7 +1484,7 @@ export default function GamePage() {
                   >
                     목록 전체 삭제
                   </button>
-                </h4>
+                </h3>
                 <div className={`space-y-3 pr-1 ${isPastSessionsExpanded ? "max-h-[300px] overflow-y-auto" : ""}`}>
                   {(isPastSessionsExpanded ? pastSessions : pastSessions.slice(0, 2)).map((session, index) => (
                     <div 
@@ -1606,7 +1538,7 @@ export default function GamePage() {
         </div>
 
         <div className="lg:col-span-1 w-full space-y-4">
-          <AttemptTicker
+          <LiveAttempts
             userNickname={currentUser || anonNickname}
             attempts={attempts}
             isLoading={isStatsLoading}
@@ -1614,24 +1546,32 @@ export default function GamePage() {
             onRefresh={() => loadAllStats(true)}
             errorMsg={statsError}
           />
-          <LeaderboardTicker currentUser={currentUser || anonNickname} />
+          <Leaderboard currentUser={currentUser || anonNickname} />
         </div>
 
       </div>
 
       {/* 설명서 오버레이 모달 */}
-      <TutorialModal
-        isOpen={isTutorialOpen}
-        onClose={() => setIsTutorialOpen(false)}
+      <HelpModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
       />
 
       {/* 라운드 자동 종료 알림 모달 */}
-      <RoundChangedModal
-        isOpen={isRoundChangedModalOpen}
+      <NextRoundModal
+        isOpen={isNextRoundModalOpen}
         prevRound={roundChangedInfo?.prevRound || round}
         prevWord={roundChangedInfo?.prevWord || "알 수 없음"}
         newRound={roundChangedInfo?.newRound || round + 1}
         onAccept={handleAcceptRoundChange}
+      />
+
+      {/* 회원 탈퇴 이중 확인 모달 */}
+      <DeleteAccountModal
+        isOpen={isDeleteAccountModalOpen}
+        onClose={() => setIsDeleteAccountModalOpen(false)}
+        currentUser={currentUser || ""}
+        onConfirm={handleWithdrawalConfirm}
       />
     </main>
   );

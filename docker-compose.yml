@@ -7,14 +7,23 @@ services:
       dockerfile: Dockerfile
     container_name: malmatch-backend
     ports:
-      - "8000:8000"
+      - "8000:7860"
     volumes:
       # Bind mount the host's models directory to the container.
-      # This keeps the massive 4.5GB model file out of the image build context,
-      # keeping builds fast and image size small.
-      - ./models:/app/models
+      # WORKDIR is set to /home/user/app in the runtime stage, so map accordingly.
+      - ./models:/home/user/app/models
     environment:
       - PYTHONUNBUFFERED=1
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request, sys; res = urllib.request.urlopen('http://localhost:7860/health'); sys.exit(0) if res.status == 200 else sys.exit(1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     deploy:
       resources:
         limits:
