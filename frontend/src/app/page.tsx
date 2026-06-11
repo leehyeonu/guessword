@@ -896,6 +896,15 @@ export default function GamePage() {
         console.warn("마이그레이션 실패:", e);
       }
     }
+
+    // 마이그레이션 완료 후 익명 데이터 정리 (성공/실패 무관)
+    // 로그인 상태에서는 회원 닉네임을 사용하므로 익명 데이터를 유지할 이유가 없음
+    localStorage.removeItem("malmatch_past_sessions");
+    setPastSessions([]);
+    // 새로운 익명 닉네임을 미리 발급해두어 로그아웃 시 즉시 사용 가능하도록 함
+    const freshAnon = `익명#${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    localStorage.setItem("malmatch_anon_nickname", freshAnon);
+    setAnonNickname(freshAnon);
   };
   
   const handleLogout = () => {
@@ -903,6 +912,16 @@ export default function GamePage() {
     setCurrentUser(null);
     localStorage.removeItem("malmatch_auth_token");
     localStorage.removeItem("malmatch_nickname");
+    
+    // 로그아웃 시 새로운 익명 닉네임을 발급하여 깨끗한 익명 상태로 전환
+    // 이전 익명 닉네임은 이미 회원으로 마이그레이션됐으므로 재사용하면 안 됨
+    const freshAnon = `익명#${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    localStorage.setItem("malmatch_anon_nickname", freshAnon);
+    setAnonNickname(freshAnon);
+    // 과거 세션도 초기화 (이미 회원 계정에 연동 완료됨)
+    localStorage.removeItem("malmatch_past_sessions");
+    setPastSessions([]);
+    
     triggerToast("로그아웃 되었습니다.");
   };
 
