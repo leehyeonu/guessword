@@ -23,6 +23,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#0a0a0a",
 };
 
 export const metadata: Metadata = {
@@ -42,7 +43,12 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: "/icon.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
   alternates: {
     canonical: "/",
@@ -54,11 +60,21 @@ export const metadata: Metadata = {
     siteName: "말맞춤 (MalMatch)",
     locale: "ko_KR",
     type: "website",
+    images: [
+      {
+        url: "/ogfile.jpg",
+        width: 1200,
+        height: 630,
+        alt: "말맞춤 (MalMatch) - 유사도 단어 추측 게임",
+        type: "image/jpeg",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "말맞춤 (MalMatch) - 유사도 단어 추측 게임",
     description: "유사도를 활용해 숨겨진 비밀 단어를 유추해내는 두뇌 게임입니다. 실시간 랭킹 시스템과 명예의 전당에 도전하세요!",
+    image: "/ogfile.jpg",
     creator: "@malmatch",
   },
   robots: {
@@ -85,6 +101,36 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              name: "말맞춤 (MalMatch)",
+              description:
+                "유사도를 활용해 숨겨진 비밀 단어를 유추해내는 두뇌 게임입니다. 실시간 랭킹 시스템과 명예의 전당에 도전하세요!",
+              url: siteUrl,
+              applicationCategory: "Game",
+              operatingSystem: "All",
+              isAccessibleForFree: true,
+              offers: {
+                "@type": "Offer",
+                price: "0",
+              },
+              image: "/ogfile.jpg",
+              author: {
+                "@type": "Organization",
+                name: "MalMatch Team",
+              },
+              potentialAction: {
+                "@type": "PlayAction",
+                target: siteUrl,
+              },
+              inLanguage: "ko-KR",
+            }),
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
