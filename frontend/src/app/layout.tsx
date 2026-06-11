@@ -74,7 +74,14 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "말맞춤 (MalMatch) - 유사도 단어 추측 게임",
     description: "유사도를 활용해 숨겨진 비밀 단어를 유추해내는 두뇌 게임입니다. 실시간 랭킹 시스템과 명예의 전당에 도전하세요!",
-    images: "/ogfile.jpg",
+    images: [
+      {
+        url: "/ogfile.jpg",
+        width: 1200,
+        height: 630,
+        alt: "말맞춤 (MalMatch) - 유사도 단어 추측 게임",
+      },
+    ],
     creator: "@malmatch",
   },
   robots: {
